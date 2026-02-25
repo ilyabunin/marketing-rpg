@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     if (!usage.allowed) {
       return NextResponse.json(
         {
-          error: "Дневной лимит запросов исчерпан",
+          error: "Daily request limit reached",
           used: usage.used,
           limit: usage.limit,
         },

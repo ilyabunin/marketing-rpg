@@ -24,7 +24,7 @@ export default function TaskSelector({
       className="w-full p-2 bg-[#1a1025] border border-[#4a3f5d] rounded text-white text-sm outline-none focus:border-amber-400"
     >
       <option value="" disabled>
-        Выбери задачу...
+        Select a task...
       </option>
       {tasks.map((t) => (
         <option key={t.id} value={t.id}>

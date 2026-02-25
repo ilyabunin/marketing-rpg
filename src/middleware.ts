@@ -1,22 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export function middleware(req: NextRequest) {
-  const token = req.cookies.get("sb-access-token")?.value
-    || req.cookies.get("sb-refresh-token")?.value;
-
-  const isLoginPage = req.nextUrl.pathname === "/login";
-  const isApi = req.nextUrl.pathname.startsWith("/api");
-
-  if (isApi) return NextResponse.next();
-
-  if (!token && !isLoginPage) {
-    return NextResponse.redirect(new URL("/login", req.url));
-  }
-
-  if (token && isLoginPage) {
-    return NextResponse.redirect(new URL("/", req.url));
-  }
-
+  // Auth is handled client-side via Supabase JS (localStorage).
+  // Server-side cookie auth can be added later with @supabase/ssr.
   return NextResponse.next();
 }
 

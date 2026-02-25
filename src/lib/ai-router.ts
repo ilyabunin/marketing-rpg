@@ -24,8 +24,16 @@ export async function routeRequest(
   const task = getTask(taskId);
   if (!task) throw new Error(`Task not found: ${taskId}`);
 
-  const modelKey = task.model_override || character.default_model;
+  let modelKey = task.model_override || character.default_model;
   const prompt = task.prompt_template.replace("{{user_input}}", userInput);
+
+  // Fallback to claude-sonnet if API key for requested model is missing
+  if (modelKey === "gemini-pro" && !process.env.GOOGLE_AI_API_KEY) {
+    modelKey = "claude-sonnet";
+  }
+  if (modelKey === "perplexity" && !process.env.PERPLEXITY_API_KEY) {
+    modelKey = "claude-sonnet";
+  }
 
   let result: AIResponse;
 

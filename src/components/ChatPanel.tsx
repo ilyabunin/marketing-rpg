@@ -20,6 +20,7 @@ interface CharacterData {
 interface Props {
   character: CharacterData;
   userId: string;
+  isGuest: boolean;
   onClose: () => void;
 }
 
@@ -28,21 +29,18 @@ interface Message {
   content: string;
 }
 
-export default function ChatPanel({ character, userId, onClose }: Props) {
+export default function ChatPanel({ character, userId, isGuest, onClose }: Props) {
   const [selectedTask, setSelectedTask] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
-  const [lastResponse, setLastResponse] = useState<string | null>(null);
-  const [webhookStatus, setWebhookStatus] = useState<string | null>(null);
 
   async function handleSend() {
-    if (!input.trim() || !selectedTask) return;
+    if (!input.trim() || !selectedTask || isGuest) return;
     const userMsg = input.trim();
     setInput("");
     setMessages((prev) => [...prev, { role: "user", content: userMsg }]);
     setLoading(true);
-    setWebhookStatus(null);
 
     try {
       const res = await fetch("/api/chat", {
@@ -59,44 +57,24 @@ export default function ChatPanel({ character, userId, onClose }: Props) {
       if (data.error) {
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: `Ошибка: ${data.error}` },
+          { role: "assistant", content: `Error: ${data.error}` },
         ]);
       } else {
         setMessages((prev) => [
           ...prev,
           { role: "assistant", content: data.response },
         ]);
-        setLastResponse(data.response);
       }
     } catch {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "Ошибка соединения" },
+        { role: "assistant", content: "Connection error" },
       ]);
     }
     setLoading(false);
   }
 
-  async function handleWebhook() {
-    if (!lastResponse || !selectedTask) return;
-    setWebhookStatus("Отправка...");
-    try {
-      const res = await fetch("/api/webhook", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          characterId: character.id,
-          taskId: selectedTask,
-          result: lastResponse,
-          userId,
-        }),
-      });
-      const data = await res.json();
-      setWebhookStatus(data.message);
-    } catch {
-      setWebhookStatus("Ошибка отправки");
-    }
-  }
+  const canSend = !isGuest && !!selectedTask;
 
   return (
     <div className="flex flex-col h-full bg-[#2a1f3d] border-l border-[#4a3f5d]">
@@ -125,6 +103,11 @@ export default function ChatPanel({ character, userId, onClose }: Props) {
         <div className="text-gray-300 text-sm bg-[#1a1025] p-3 rounded">
           {character.greeting}
         </div>
+        {isGuest && (
+          <div className="text-amber-400/70 text-xs bg-amber-900/20 p-3 rounded">
+            Sign in to use AI features
+          </div>
+        )}
         {messages.map((msg, i) => (
           <div
             key={i}
@@ -138,24 +121,9 @@ export default function ChatPanel({ character, userId, onClose }: Props) {
           </div>
         ))}
         {loading && (
-          <div className="text-gray-500 text-sm animate-pulse">Думаю...</div>
+          <div className="text-gray-500 text-sm animate-pulse">Thinking...</div>
         )}
       </div>
-
-      {/* Webhook button */}
-      {lastResponse && (
-        <div className="px-4 pb-2">
-          <button
-            onClick={handleWebhook}
-            className="w-full p-2 text-xs bg-purple-800 hover:bg-purple-700 text-white rounded"
-          >
-            Отправить в Make.com
-          </button>
-          {webhookStatus && (
-            <p className="text-xs text-gray-400 mt-1">{webhookStatus}</p>
-          )}
-        </div>
-      )}
 
       {/* Input */}
       <div className="p-3 border-t border-[#4a3f5d] flex gap-2">
@@ -163,13 +131,19 @@ export default function ChatPanel({ character, userId, onClose }: Props) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
-          placeholder={selectedTask ? "Введи запрос..." : "Сначала выбери задачу"}
-          disabled={!selectedTask || loading}
+          placeholder={
+            isGuest
+              ? "Sign in to send messages"
+              : selectedTask
+                ? "Enter your request..."
+                : "Select a task first"
+          }
+          disabled={!canSend || loading}
           className="flex-1 p-2 bg-[#1a1025] border border-[#4a3f5d] rounded text-white text-sm outline-none focus:border-amber-400 disabled:opacity-50"
         />
         <button
           onClick={handleSend}
-          disabled={!selectedTask || !input.trim() || loading}
+          disabled={!canSend || !input.trim() || loading}
           className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-black font-bold rounded text-sm disabled:opacity-50"
         >
           →
