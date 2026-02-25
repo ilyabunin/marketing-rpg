@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
-export function middleware(req: NextRequest) {
+export function middleware() {
   // Auth is handled client-side via Supabase JS (localStorage).
   // Server-side cookie auth can be added later with @supabase/ssr.
   return NextResponse.next();
