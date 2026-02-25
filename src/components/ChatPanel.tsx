@@ -61,6 +61,13 @@ export default function ChatPanel({
     setLoading(true);
     setLastResponse(null);
 
+    // Tell Phaser scene: character is working
+    window.dispatchEvent(
+      new CustomEvent("character-status", {
+        detail: { id: character.id, status: "working" },
+      })
+    );
+
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -83,6 +90,13 @@ export default function ChatPanel({
       ]);
     }
     setLoading(false);
+
+    // Tell Phaser scene: character is done
+    window.dispatchEvent(
+      new CustomEvent("character-status", {
+        detail: { id: character.id, status: "done" },
+      })
+    );
   }
 
   async function handleWebhook() {

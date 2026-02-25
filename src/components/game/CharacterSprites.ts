@@ -18,6 +18,8 @@ interface CharacterData {
   tasks: { id: string; name: string; description: string }[];
 }
 
+type CharStatus = "idle" | "working" | "done";
+
 interface CharRef {
   sprite: Phaser.GameObjects.Sprite;
   nameText: Phaser.GameObjects.Text;
@@ -26,6 +28,7 @@ interface CharRef {
   walkSpeed: number;
   currentTween: Phaser.Tweens.Tween | null;
   walkTimer: Phaser.Time.TimerEvent | null;
+  status: CharStatus;
 }
 
 const SPRITE_MAP: Record<string, string> = {
@@ -98,7 +101,7 @@ export function placeCharacters(
   function deselectAll() {
     if (selectedId) {
       const ref = charRefs.get(selectedId);
-      if (ref) startWalking(ref);
+      if (ref && ref.status !== "working") startWalking(ref);
       selectedId = null;
     }
     clearMenu();
@@ -182,11 +185,12 @@ export function placeCharacters(
   }
 
   function startWalking(ref: CharRef) {
+    if (ref.status === "working") return; // Don't walk while working
     const zone = WORK_ZONES[ref.data.id];
     if (!zone) return;
 
     function walk() {
-      if (selectedId === ref.data.id) return;
+      if (selectedId === ref.data.id || ref.status === "working") return;
 
       const tx = zone.cx + (Math.random() - 0.5) * ZONE_HALF * 2;
       const ty = zone.cy + 20 + (Math.random() - 0.5) * ZONE_HALF * 2;
@@ -282,6 +286,7 @@ export function placeCharacters(
       walkSpeed: 30 + Math.random() * 30,
       currentTween: null,
       walkTimer: null,
+      status: "idle",
     };
     charRefs.set(c.id, ref);
 
@@ -295,5 +300,64 @@ export function placeCharacters(
     });
 
     startWalking(ref);
+  });
+
+  // --- Status system via CustomEvents ---
+  function setCharStatus(charId: string, status: CharStatus) {
+    const ref = charRefs.get(charId);
+    if (!ref) return;
+
+    ref.status = status;
+    const zone = WORK_ZONES[charId];
+
+    if (status === "working") {
+      // Stop walking, go to desk, face up
+      stopWalking(ref);
+      if (zone) {
+        ref.sprite.setPosition(zone.cx, zone.cy + 20);
+        ref.sprite.setFrame(DIR_FRAMES["up"].start); // face desk
+        ref.nameText.setPosition(ref.sprite.x, ref.sprite.y - 44);
+      }
+      ref.nameText.setText(`${ref.data.name_ru}\nWorking...`);
+      ref.nameText.setColor("#f0c040");
+    } else if (status === "done") {
+      ref.nameText.setText(`${ref.data.name_ru}\nDone`);
+      ref.nameText.setColor("#4ad98a");
+      // After 3 seconds, go back to idle
+      scene.time.delayedCall(3000, () => {
+        if (ref.status === "done") {
+          setCharStatus(charId, "idle");
+        }
+      });
+    } else {
+      // idle
+      ref.nameText.setText(ref.data.name_ru);
+      ref.nameText.setColor("#e0d5c1");
+      if (selectedId !== charId) {
+        startWalking(ref);
+      }
+    }
+
+    // Dispatch for Party bar
+    window.dispatchEvent(
+      new CustomEvent("character-status-update", {
+        detail: { id: charId, status },
+      })
+    );
+  }
+
+  function handleStatusEvent(e: Event) {
+    const { id, status } = (e as CustomEvent).detail;
+    setCharStatus(id, status);
+  }
+
+  window.addEventListener("character-status", handleStatusEvent);
+
+  // Cleanup listener when scene shuts down
+  scene.events.on("shutdown", () => {
+    window.removeEventListener("character-status", handleStatusEvent);
+  });
+  scene.events.on("destroy", () => {
+    window.removeEventListener("character-status", handleStatusEvent);
   });
 }
