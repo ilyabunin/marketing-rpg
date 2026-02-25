@@ -31,10 +31,19 @@ export default function RPGScene({ characters, onSelectCharacter }: Props) {
     import("phaser").then(async (Phaser) => {
       const { drawFloor, drawWalls } = await import("./game/RoomBuilder");
       const { drawFurniture } = await import("./game/FurnitureBuilder");
+      const {
+        preloadCharacters,
+        createCharacterAnimations,
+        placeCharacters,
+      } = await import("./game/CharacterSprites");
 
       class OfficeScene extends Phaser.Scene {
         constructor() {
           super("office");
+        }
+
+        preload() {
+          preloadCharacters(this);
         }
 
         create() {
@@ -43,7 +52,8 @@ export default function RPGScene({ characters, onSelectCharacter }: Props) {
           drawFloor(this);
           drawWalls(this);
           drawFurniture(this);
-          drawCharacterPlaceholders(this, characters, onSelectCharacter);
+          createCharacterAnimations(this);
+          placeCharacters(this, characters, onSelectCharacter);
         }
       }
 
@@ -71,52 +81,3 @@ export default function RPGScene({ characters, onSelectCharacter }: Props) {
   return <div ref={containerRef} className="w-full h-full" />;
 }
 
-/** Placeholder characters — replaced with sprites in Step 4 */
-function drawCharacterPlaceholders(
-  scene: Phaser.Scene,
-  characters: CharacterData[],
-  onClick: (c: CharacterData) => void
-) {
-  const POS: Record<string, { x: number; y: number }> = {
-    "seo-analyst": { x: 4, y: 5 },
-    "creative-director": { x: 15, y: 5 },
-    "senior-copywriter": { x: 15, y: 9 },
-    "ua-strategist": { x: 4, y: 9 },
-  };
-
-  const CLR: Record<string, number> = {
-    "seo-analyst": 0x4fc3f7,
-    "creative-director": 0xffb74d,
-    "senior-copywriter": 0x81c784,
-    "ua-strategist": 0xce93d8,
-  };
-
-  characters.forEach((c) => {
-    const pos = POS[c.id] || c.position;
-    const color = CLR[c.id] || 0xffffff;
-    const cx = pos.x * TILE + TILE / 2;
-    const cy = pos.y * TILE + TILE / 2;
-
-    const body = scene.add.rectangle(cx, cy, 12, 14, color);
-    body.setInteractive({ useHandCursor: true });
-    body.on("pointerdown", () => onClick(c));
-
-    const nameText = scene.add
-      .text(cx, cy - 12, c.name_ru, {
-        fontSize: "5px",
-        color: "#f0c040",
-        fontFamily: '"Press Start 2P"',
-      })
-      .setOrigin(0.5)
-      .setVisible(false);
-
-    body.on("pointerover", () => {
-      body.setScale(1.2);
-      nameText.setVisible(true);
-    });
-    body.on("pointerout", () => {
-      body.setScale(1);
-      nameText.setVisible(false);
-    });
-  });
-}
