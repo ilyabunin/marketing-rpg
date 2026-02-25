@@ -1,5 +1,5 @@
-const TILE = 48; // 16px * 3x scale
-const SPRITE_SCALE = 3;
+const TILE = 32;
+const SPRITE_SCALE = 1.5;
 
 interface CharacterData {
   id: string;
@@ -17,11 +17,12 @@ const SPRITE_MAP: Record<string, string> = {
   "ua-strategist": "Bob",
 };
 
+// Tile positions near each work zone's chair
 const POSITIONS: Record<string, { x: number; y: number }> = {
-  "seo-analyst": { x: 4, y: 5 },
-  "creative-director": { x: 15, y: 5 },
-  "senior-copywriter": { x: 15, y: 9 },
-  "ua-strategist": { x: 4, y: 9 },
+  "seo-analyst": { x: 6, y: 7 },
+  "creative-director": { x: 23, y: 7 },
+  "senior-copywriter": { x: 6, y: 15 },
+  "ua-strategist": { x: 23, y: 15 },
 };
 
 export function preloadCharacters(scene: Phaser.Scene) {
@@ -35,7 +36,6 @@ export function preloadCharacters(scene: Phaser.Scene) {
 
 export function createCharacterAnimations(scene: Phaser.Scene) {
   Object.values(SPRITE_MAP).forEach((name) => {
-    // Idle: row 0 (facing down), frames 0,1,2,3
     scene.anims.create({
       key: `${name}-idle`,
       frames: scene.anims.generateFrameNumbers(name, {
@@ -46,7 +46,6 @@ export function createCharacterAnimations(scene: Phaser.Scene) {
       repeat: -1,
     });
 
-    // Face down (turn to camera)
     scene.anims.create({
       key: `${name}-face-down`,
       frames: [{ key: name, frame: 0 }],
@@ -74,8 +73,8 @@ export function placeCharacters(
     sprite.setInteractive({ useHandCursor: true });
 
     const nameText = scene.add
-      .text(cx, cy - 80, c.name_ru, {
-        fontSize: "12px",
+      .text(cx, cy - 44, c.name_ru, {
+        fontSize: "11px",
         color: "#f0c040",
         fontFamily: '"Pixelify Sans", sans-serif',
         stroke: "#0f0f23",
@@ -95,10 +94,8 @@ export function placeCharacters(
     });
 
     sprite.on("pointerdown", () => {
-      // Face camera (frame 0 = facing down)
       sprite.play(`${spriteName}-face-down`);
       onClick(c);
-      // Resume idle after a short delay
       scene.time.delayedCall(300, () => {
         sprite.play(`${spriteName}-idle`);
       });

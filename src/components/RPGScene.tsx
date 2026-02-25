@@ -16,21 +16,17 @@ interface Props {
   onSelectCharacter: (character: CharacterData) => void;
 }
 
-const TILE = 16;
-const SCALE = 3;
-const COLS = 20;
-const ROWS = 15;
+const CANVAS_W = 960;
+const CANVAS_H = 640;
 
 export default function RPGScene({ characters, onSelectCharacter }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Phaser.Game | null>(null);
-  const mountedRef = useRef(false);
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    // Prevent duplicate games from React StrictMode
     if (gameRef.current) {
       gameRef.current.destroy(true);
       gameRef.current = null;
@@ -71,8 +67,8 @@ export default function RPGScene({ characters, onSelectCharacter }: Props) {
       const game = new Phaser.Game({
         type: Phaser.AUTO,
         parent: container,
-        width: COLS * TILE * SCALE,
-        height: ROWS * TILE * SCALE,
+        width: CANVAS_W,
+        height: CANVAS_H,
         backgroundColor: "#0f0f23",
         scene: OfficeScene,
         scale: {
@@ -93,4 +89,3 @@ export default function RPGScene({ characters, onSelectCharacter }: Props) {
 
   return <div ref={containerRef} className="w-full h-full" />;
 }
-
