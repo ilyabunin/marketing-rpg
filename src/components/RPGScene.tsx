@@ -16,20 +16,10 @@ interface Props {
   onSelectCharacter: (character: CharacterData) => void;
 }
 
-const TILE = 64;
-const COLORS: Record<string, number> = {
-  "seo-analyst": 0x4fc3f7,
-  "creative-director": 0xffb74d,
-  "senior-copywriter": 0x81c784,
-  "ua-strategist": 0xce93d8,
-};
-
-const FURNITURE_COLORS: Record<string, number> = {
-  desk: 0x5d4e37,
-  plant: 0x2e7d32,
-  whiteboard: 0xcfd8dc,
-  coffee_machine: 0x795548,
-};
+const TILE = 16;
+const SCALE = 3;
+const COLS = 20;
+const ROWS = 15;
 
 export default function RPGScene({ characters, onSelectCharacter }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -38,9 +28,9 @@ export default function RPGScene({ characters, onSelectCharacter }: Props) {
   useEffect(() => {
     if (!containerRef.current || gameRef.current) return;
 
-    import("phaser").then((Phaser) => {
-      const roomWidth = 10 * TILE;
-      const roomHeight = 8 * TILE;
+    import("phaser").then(async (Phaser) => {
+      const { drawFloor, drawWalls } = await import("./game/RoomBuilder");
+      const { drawFurniture } = await import("./game/FurnitureBuilder");
 
       class OfficeScene extends Phaser.Scene {
         constructor() {
@@ -48,21 +38,27 @@ export default function RPGScene({ characters, onSelectCharacter }: Props) {
         }
 
         create() {
-          this.cameras.main.setBackgroundColor("#2a1f3d");
-          drawGrid(this);
+          this.cameras.main.setBackgroundColor("#0f0f23");
+          this.cameras.main.setZoom(SCALE);
+          drawFloor(this);
+          drawWalls(this);
           drawFurniture(this);
-          drawCharacters(this, characters, onSelectCharacter);
+          drawCharacterPlaceholders(this, characters, onSelectCharacter);
         }
       }
 
       gameRef.current = new Phaser.Game({
         type: Phaser.AUTO,
         parent: containerRef.current!,
-        width: roomWidth,
-        height: roomHeight,
-        backgroundColor: "#2a1f3d",
+        width: COLS * TILE * SCALE,
+        height: ROWS * TILE * SCALE,
+        backgroundColor: "#0f0f23",
         scene: OfficeScene,
-        scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+        scale: {
+          mode: Phaser.Scale.FIT,
+          autoCenter: Phaser.Scale.CENTER_BOTH,
+        },
+        pixelArt: true,
       });
     });
 
@@ -75,73 +71,52 @@ export default function RPGScene({ characters, onSelectCharacter }: Props) {
   return <div ref={containerRef} className="w-full h-full" />;
 }
 
-function drawGrid(scene: Phaser.Scene) {
-  const gfx = scene.add.graphics();
-  gfx.lineStyle(1, 0x3d2e5c, 0.3);
-  for (let x = 0; x <= 10; x++) {
-    gfx.moveTo(x * TILE, 0);
-    gfx.lineTo(x * TILE, 8 * TILE);
-  }
-  for (let y = 0; y <= 8; y++) {
-    gfx.moveTo(0, y * TILE);
-    gfx.lineTo(10 * TILE, y * TILE);
-  }
-  gfx.strokePath();
-}
-
-function drawFurniture(scene: Phaser.Scene) {
-  const furniture = [
-    { type: "desk", x: 2, y: 2, label: "SEO" },
-    { type: "desk", x: 5, y: 1, label: "CREO" },
-    { type: "desk", x: 7, y: 3, label: "TEXT" },
-    { type: "desk", x: 4, y: 4, label: "UA" },
-    { type: "plant", x: 0, y: 0 },
-    { type: "whiteboard", x: 9, y: 1 },
-    { type: "coffee_machine", x: 0, y: 7 },
-  ];
-
-  furniture.forEach((f) => {
-    const color = FURNITURE_COLORS[f.type] || 0x555555;
-    const rect = scene.add.rectangle(
-      f.x * TILE + TILE / 2,
-      f.y * TILE + TILE / 2,
-      TILE - 8,
-      TILE - 8,
-      color,
-      0.5
-    );
-    rect.setStrokeStyle(1, color, 0.8);
-    if (f.label) {
-      scene.add.text(f.x * TILE + TILE / 2, f.y * TILE + TILE / 2, f.label, {
-        fontSize: "9px",
-        color: "#aaa",
-      }).setOrigin(0.5);
-    }
-  });
-}
-
-function drawCharacters(
+/** Placeholder characters — replaced with sprites in Step 4 */
+function drawCharacterPlaceholders(
   scene: Phaser.Scene,
   characters: CharacterData[],
   onClick: (c: CharacterData) => void
 ) {
-  characters.forEach((c) => {
-    const color = COLORS[c.id] || 0xffffff;
-    const cx = c.position.x * TILE + TILE / 2;
-    const cy = c.position.y * TILE + TILE / 2;
+  const POS: Record<string, { x: number; y: number }> = {
+    "seo-analyst": { x: 4, y: 5 },
+    "creative-director": { x: 15, y: 5 },
+    "senior-copywriter": { x: 15, y: 9 },
+    "ua-strategist": { x: 4, y: 9 },
+  };
 
-    const body = scene.add.rectangle(cx, cy, 32, 40, color);
+  const CLR: Record<string, number> = {
+    "seo-analyst": 0x4fc3f7,
+    "creative-director": 0xffb74d,
+    "senior-copywriter": 0x81c784,
+    "ua-strategist": 0xce93d8,
+  };
+
+  characters.forEach((c) => {
+    const pos = POS[c.id] || c.position;
+    const color = CLR[c.id] || 0xffffff;
+    const cx = pos.x * TILE + TILE / 2;
+    const cy = pos.y * TILE + TILE / 2;
+
+    const body = scene.add.rectangle(cx, cy, 12, 14, color);
     body.setInteractive({ useHandCursor: true });
     body.on("pointerdown", () => onClick(c));
-    body.on("pointerover", () => body.setScale(1.15));
-    body.on("pointerout", () => body.setScale(1));
 
-    scene.add
-      .text(cx, cy - 30, c.name_ru, {
-        fontSize: "10px",
-        color: "#fff",
-        fontStyle: "bold",
+    const nameText = scene.add
+      .text(cx, cy - 12, c.name_ru, {
+        fontSize: "5px",
+        color: "#f0c040",
+        fontFamily: '"Press Start 2P"',
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setVisible(false);
+
+    body.on("pointerover", () => {
+      body.setScale(1.2);
+      nameText.setVisible(true);
+    });
+    body.on("pointerout", () => {
+      body.setScale(1);
+      nameText.setVisible(false);
+    });
   });
 }
