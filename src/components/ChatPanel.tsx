@@ -1,7 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import RPGPanel from "./ui/RPGPanel";
+import RPGButton from "./ui/RPGButton";
+import RPGInput from "./ui/RPGInput";
 import TaskSelector from "./TaskSelector";
+import ChatMessage from "./ChatMessage";
 
 interface TaskOption {
   id: string;
@@ -29,11 +33,17 @@ interface Message {
   content: string;
 }
 
-export default function ChatPanel({ character, userId, isGuest, onClose }: Props) {
+export default function ChatPanel({
+  character,
+  userId,
+  isGuest,
+  onClose,
+}: Props) {
   const [selectedTask, setSelectedTask] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
+  const [lastResponse, setLastResponse] = useState<string | null>(null);
 
   async function handleSend() {
     if (!input.trim() || !selectedTask || isGuest) return;
@@ -41,6 +51,7 @@ export default function ChatPanel({ character, userId, isGuest, onClose }: Props
     setInput("");
     setMessages((prev) => [...prev, { role: "user", content: userMsg }]);
     setLoading(true);
+    setLastResponse(null);
 
     try {
       const res = await fetch("/api/chat", {
@@ -54,17 +65,11 @@ export default function ChatPanel({ character, userId, isGuest, onClose }: Props
         }),
       });
       const data = await res.json();
-      if (data.error) {
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: `Error: ${data.error}` },
-        ]);
-      } else {
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: data.response },
-        ]);
-      }
+      const content = data.error
+        ? `Error: ${data.error}`
+        : data.response;
+      setMessages((prev) => [...prev, { role: "assistant", content }]);
+      if (!data.error) setLastResponse(content);
     } catch {
       setMessages((prev) => [
         ...prev,
@@ -74,23 +79,41 @@ export default function ChatPanel({ character, userId, isGuest, onClose }: Props
     setLoading(false);
   }
 
+  async function handleWebhook() {
+    if (!lastResponse || !selectedTask) return;
+    await fetch("/api/webhook", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        characterId: character.id,
+        taskId: selectedTask,
+        result: lastResponse,
+        userId,
+      }),
+    });
+  }
+
   const canSend = !isGuest && !!selectedTask;
 
   return (
-    <div className="flex flex-col h-full bg-[#2a1f3d] border-l border-[#4a3f5d]">
+    <RPGPanel className="flex flex-col h-full">
       {/* Header */}
-      <div className="p-4 border-b border-[#4a3f5d] flex justify-between items-start">
+      <div className="p-3 border-b-2 border-rpg-border-inner flex justify-between items-start">
         <div>
-          <h2 className="text-amber-400 font-bold">{character.name_ru}</h2>
-          <p className="text-gray-400 text-xs">{character.role}</p>
+          <h2 className="font-pixel text-sm text-rpg-gold">
+            {character.name_ru}
+          </h2>
+          <p className="font-vt323 text-base text-rpg-text mt-1">
+            {character.role}
+          </p>
         </div>
-        <button onClick={onClose} className="text-gray-500 hover:text-white">
+        <RPGButton onClick={onClose} variant="secondary" className="text-xs">
           ✕
-        </button>
+        </RPGButton>
       </div>
 
       {/* Task selector */}
-      <div className="p-3 border-b border-[#4a3f5d]">
+      <div className="p-3 border-b-2 border-rpg-border-inner">
         <TaskSelector
           tasks={character.tasks}
           selectedTaskId={selectedTask}
@@ -99,56 +122,69 @@ export default function ChatPanel({ character, userId, isGuest, onClose }: Props
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        <div className="text-gray-300 text-sm bg-[#1a1025] p-3 rounded">
-          {character.greeting}
-        </div>
+      <div className="flex-1 overflow-y-auto p-3 space-y-3">
+        <ChatMessage
+          role="assistant"
+          content={character.greeting}
+          isLatest={messages.length === 0}
+        />
         {isGuest && (
-          <div className="text-amber-400/70 text-xs bg-amber-900/20 p-3 rounded">
+          <div className="font-pixel text-[10px] text-rpg-gold bg-rpg-gold/10 p-3">
             Sign in to use AI features
           </div>
         )}
         {messages.map((msg, i) => (
-          <div
+          <ChatMessage
             key={i}
-            className={`text-sm p-3 rounded whitespace-pre-wrap ${
-              msg.role === "user"
-                ? "bg-amber-900/30 text-amber-100 ml-8"
-                : "bg-[#1a1025] text-gray-300 mr-4"
-            }`}
-          >
-            {msg.content}
-          </div>
+            role={msg.role}
+            content={msg.content}
+            isLatest={
+              msg.role === "assistant" && i === messages.length - 1
+            }
+          />
         ))}
         {loading && (
-          <div className="text-gray-500 text-sm animate-pulse">Thinking...</div>
+          <div className="font-pixel text-[10px] text-rpg-border-inner animate-pulse">
+            Thinking...
+          </div>
         )}
       </div>
 
       {/* Input */}
-      <div className="p-3 border-t border-[#4a3f5d] flex gap-2">
-        <input
+      <div className="p-3 border-t-2 border-rpg-border-inner flex gap-2">
+        <RPGInput
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
           placeholder={
             isGuest
-              ? "Sign in to send messages"
+              ? "Sign in to chat"
               : selectedTask
-                ? "Enter your request..."
-                : "Select a task first"
+                ? "Your request..."
+                : "Select quest first"
           }
           disabled={!canSend || loading}
-          className="flex-1 p-2 bg-[#1a1025] border border-[#4a3f5d] rounded text-white text-sm outline-none focus:border-amber-400 disabled:opacity-50"
         />
-        <button
+        <RPGButton
           onClick={handleSend}
           disabled={!canSend || !input.trim() || loading}
-          className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-black font-bold rounded text-sm disabled:opacity-50"
         >
           →
-        </button>
+        </RPGButton>
       </div>
-    </div>
+
+      {/* Webhook button */}
+      {lastResponse && (
+        <div className="p-3 border-t-2 border-rpg-border-inner">
+          <RPGButton
+            onClick={handleWebhook}
+            variant="secondary"
+            className="w-full"
+          >
+            📤 Send to Make.com
+          </RPGButton>
+        </div>
+      )}
+    </RPGPanel>
   );
 }

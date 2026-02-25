@@ -18,19 +18,30 @@ export default function TaskSelector({
   onSelect,
 }: TaskSelectorProps) {
   return (
-    <select
-      value={selectedTaskId || ""}
-      onChange={(e) => onSelect(e.target.value)}
-      className="w-full p-2 bg-[#1a1025] border border-[#4a3f5d] rounded text-white text-sm outline-none focus:border-amber-400"
-    >
-      <option value="" disabled>
-        Select a task...
-      </option>
-      {tasks.map((t) => (
-        <option key={t.id} value={t.id}>
-          {t.name}
-        </option>
-      ))}
-    </select>
+    <div className="space-y-1">
+      <div className="font-pixel text-[10px] text-rpg-gold mb-2">
+        SELECT QUEST:
+      </div>
+      {tasks.map((t) => {
+        const isSelected = t.id === selectedTaskId;
+        return (
+          <button
+            key={t.id}
+            onClick={() => onSelect(t.id)}
+            className={`w-full text-left px-2 py-1 font-vt323 text-base transition-colors ${
+              isSelected
+                ? "text-rpg-gold bg-rpg-gold/10"
+                : "text-rpg-text hover:text-rpg-gold hover:bg-rpg-gold/5"
+            }`}
+            style={{ borderRadius: 0 }}
+          >
+            <span className="inline-block w-5">
+              {isSelected ? "▶" : " "}
+            </span>
+            {t.name}
+          </button>
+        );
+      })}
+    </div>
   );
 }
