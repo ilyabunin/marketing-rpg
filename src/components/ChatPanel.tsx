@@ -106,7 +106,7 @@ export default function ChatPanel({
             <h2 className="font-pixel text-sm text-rpg-gold">
               {character.name_ru}
             </h2>
-            <p className="font-vt323 text-base text-rpg-text mt-1">
+            <p className="font-body text-base text-rpg-text mt-1">
               {character.role}
             </p>
           </div>

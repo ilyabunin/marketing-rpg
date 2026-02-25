@@ -34,7 +34,7 @@ export default function Header({ isGuest }: Props) {
         Profee Marketing Playground
       </h1>
       <div className="flex items-center gap-3">
-        <span className="font-vt323 text-base text-rpg-text">{name}</span>
+        <span className="font-body text-base text-rpg-text">{name}</span>
         <RPGButton variant="secondary" onClick={handleLogout}>
           EXIT
         </RPGButton>

@@ -63,7 +63,7 @@ export default function LoginPage() {
               </h1>
 
               {error && (
-                <div className="font-vt323 text-base text-red-400 bg-red-900/30 p-2">
+                <div className="font-body text-base text-red-400 bg-red-900/30 p-2">
                   {error}
                 </div>
               )}
@@ -103,7 +103,7 @@ export default function LoginPage() {
               <h1 className="font-pixel text-sm text-rpg-gold text-center">
                 Guest Access
               </h1>
-              <p className="font-vt323 text-base text-rpg-border-inner text-center">
+              <p className="font-body text-base text-rpg-border-inner text-center">
                 Browse office, AI requires sign in
               </p>
 

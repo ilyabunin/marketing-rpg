@@ -21,8 +21,8 @@ const config: Config = {
         },
       },
       fontFamily: {
-        pixel: ['"Press Start 2P"', "cursive"],
-        vt323: ['"VT323"', "monospace"],
+        pixel: ['"Pixelify Sans"', "cursive"],
+        body: ['"Inter"', "sans-serif"],
       },
     },
   },

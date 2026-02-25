@@ -19,7 +19,7 @@ export default function ChatMessage({ role, content, isLatest, characterId }: Pr
   if (role === "user") {
     return (
       <RPGPanel borderColor="#4080c0" className="ml-6">
-        <div className="font-vt323 text-lg leading-relaxed text-rpg-text whitespace-pre-wrap">
+        <div className="font-body text-lg leading-relaxed text-rpg-text whitespace-pre-wrap">
           {content}
         </div>
       </RPGPanel>
@@ -38,7 +38,7 @@ export default function ChatMessage({ role, content, isLatest, characterId }: Pr
             </div>
           )}
         </div>
-        <div className="font-vt323 text-lg leading-relaxed text-rpg-text whitespace-pre-wrap flex-1">
+        <div className="font-body text-lg leading-relaxed text-rpg-text whitespace-pre-wrap flex-1">
           {isLatest && !typewriterDone ? (
             <TypewriterText text={content} speed={15} onComplete={onComplete} />
           ) : (

@@ -64,7 +64,7 @@ export function drawFurniture(scene: Phaser.Scene) {
         .text(px + pw / 2, py + ph / 2, f.label, {
           fontSize: "12px",
           color: "#e0d5c1",
-          fontFamily: '"Press Start 2P"',
+          fontFamily: '"Pixelify Sans", sans-serif',
         })
         .setOrigin(0.5);
     }

@@ -28,7 +28,7 @@ export default function TaskSelector({
           <button
             key={t.id}
             onClick={() => onSelect(t.id)}
-            className={`w-full text-left px-2 py-1 font-vt323 text-base transition-colors ${
+            className={`w-full text-left px-2 py-1 font-body text-base transition-colors ${
               isSelected
                 ? "text-rpg-gold bg-rpg-gold/10"
                 : "text-rpg-text hover:text-rpg-gold hover:bg-rpg-gold/5"

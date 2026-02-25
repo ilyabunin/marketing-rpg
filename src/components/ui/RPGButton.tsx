@@ -14,7 +14,7 @@ export default function RPGButton({
   ...props
 }: RPGButtonProps) {
   const base =
-    "rpg-button font-pixel text-xs px-4 py-2 border-2 transition-colors";
+    "rpg-button font-pixel text-sm px-4 py-2 border-2 transition-colors";
   const variants = {
     primary:
       "bg-[#1a1a2e] border-[#e0d5c1] text-[#f0c040] hover:bg-[#f0c040] hover:text-[#1a1a2e]",

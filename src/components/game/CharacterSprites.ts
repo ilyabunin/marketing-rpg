@@ -77,7 +77,7 @@ export function placeCharacters(
       .text(cx, cy - 80, c.name_ru, {
         fontSize: "12px",
         color: "#f0c040",
-        fontFamily: '"Press Start 2P"',
+        fontFamily: '"Pixelify Sans", sans-serif',
         stroke: "#0f0f23",
         strokeThickness: 3,
       })

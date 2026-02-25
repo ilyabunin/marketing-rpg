@@ -10,16 +10,16 @@ body {
   margin: 0;
   background: #0f0f23;
   color: #e0d5c1;
-  font-family: "VT323", monospace;
+  font-family: "Inter", sans-serif;
 }
 
 /* Pixel font utility classes */
 .font-pixel {
-  font-family: "Press Start 2P", cursive;
+  font-family: "Pixelify Sans", cursive;
 }
 
-.font-vt323 {
-  font-family: "VT323", monospace;
+.font-body {
+  font-family: "Inter", sans-serif;
 }
 
 /* RPG Panel base styles */
@@ -41,18 +41,6 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #f0c040;
-}
-
-/* Typewriter animation */
-@keyframes typewriter {
-  from { width: 0; }
-  to { width: 100%; }
-}
-
-.rpg-typewriter {
-  overflow: hidden;
-  white-space: pre-wrap;
-  animation: typewriter 0.5s steps(20) forwards;
 }
 
 /* Pixel rendering for sprites */
