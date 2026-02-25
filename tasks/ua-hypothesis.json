@@ -1,0 +1,10 @@
+{
+  "id": "ua-hypothesis",
+  "name": "Генерация гипотез",
+  "description": "Генерация гипотез для A/B тестов с приоритизацией по ICE",
+  "character": "ua-strategist",
+  "model_override": null,
+  "prompt_template": "Сгенерируй гипотезы для тестирования на основе следующего контекста.\n\nДля каждой гипотезы:\n1. Формулировка: \"Если [действие], то [результат], потому что [логика]\"\n2. Канал (Meta/Google/TikTok)\n3. Метрика успеха (CPA, CTR, CR, etc.)\n4. ICE Score:\n   - Impact (1-10)\n   - Confidence (1-10)\n   - Ease (1-10)\n   - Итого (среднее)\n5. Необходимые ресурсы\n\nОтсортируй по ICE Score (от высокого к низкому).\n\nКонтекст:\n{{user_input}}",
+  "output_format": "structured",
+  "webhook_action": "ua-hypotheses"
+}

@@ -1,0 +1,27 @@
+{
+  "_comment": "Заполни URL после создания сценариев в Make.com. Каждый сценарий начинается с модуля Webhook → Custom webhook.",
+  "seo-results": {
+    "url": "",
+    "description": "SEO результаты → Google Sheets 'Семантическое ядро'",
+    "destination": "Google Sheets",
+    "setup_guide": "В Make.com: Webhook → Google Sheets (Add a Row). Колонки: date, user, task_type, query, result"
+  },
+  "creative-brief": {
+    "url": "",
+    "description": "Бриф на креатив → Asana задача для дизайнера",
+    "destination": "Asana",
+    "setup_guide": "В Make.com: Webhook → Asana (Create a Task). Project: Creative Production, поля: name, notes, assignee"
+  },
+  "text-ready": {
+    "url": "",
+    "description": "Готовый текст → Google Docs + Asana задача 'на ревью'",
+    "destination": "Google Docs + Asana",
+    "setup_guide": "В Make.com: Webhook → Google Docs (Create a Document) → Asana (Create a Task с ссылкой на док)"
+  },
+  "ua-hypotheses": {
+    "url": "",
+    "description": "UA гипотезы → Asana задачи с приоритетами",
+    "destination": "Asana",
+    "setup_guide": "В Make.com: Webhook → Iterator (по гипотезам) → Asana (Create a Task для каждой)"
+  }
+}

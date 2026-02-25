@@ -1,0 +1,10 @@
+{
+  "id": "creative-brief",
+  "name": "Бриф на креатив",
+  "description": "Создание полного брифа для рекламного креатива",
+  "character": "creative-director",
+  "model_override": null,
+  "prompt_template": "Создай бриф на рекламный креатив для Profee на основе следующего запроса.\n\nБриф должен содержать:\n1. Цель креатива\n2. Целевая аудитория (гео, демография, боли)\n3. Ключевое сообщение\n4. Визуал (подробное описание того что должно быть на картинке/видео)\n5. Основной текст (headline + body)\n6. CTA (call to action)\n7. Формат (static/video/carousel) и размеры\n8. Площадка (Meta/Google/TikTok)\n9. Эмоциональный триггер\n\nЗапрос:\n{{user_input}}",
+  "output_format": "structured",
+  "webhook_action": "creative-brief"
+}

@@ -1,0 +1,10 @@
+{
+  "id": "ua-benchmark",
+  "name": "Бенчмарки рынка",
+  "description": "Поиск бенчмарков по метрикам для конкретного гео и вертикали",
+  "character": "ua-strategist",
+  "model_override": "perplexity",
+  "prompt_template": "Найди актуальные бенчмарки для рекламы в сфере money transfer / fintech по следующему запросу.\n\nВключи:\n1. Средние значения метрик (CPA, CPI, CTR, CR, ROAS) для указанного гео\n2. Сравнение каналов (Meta vs Google vs TikTok)\n3. Сезонность (если есть данные)\n4. Тренды за последний год\n5. Источники данных\n\nВажно: если точных данных нет — укажи это честно и дай ближайшие аналоги.\n\nЗапрос:\n{{user_input}}",
+  "output_format": "structured",
+  "webhook_action": "ua-hypotheses"
+}

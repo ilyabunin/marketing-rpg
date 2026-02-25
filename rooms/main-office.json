@@ -1,0 +1,23 @@
+{
+  "id": "main-office",
+  "name": "Главный офис",
+  "name_ru": "Главный офис",
+  "tilemap": "office_tilemap",
+  "size": { "width": 10, "height": 8 },
+  "background_color": "#2a1f3d",
+  "characters": [
+    "seo-analyst",
+    "creative-director",
+    "senior-copywriter",
+    "ua-strategist"
+  ],
+  "furniture": [
+    { "type": "desk", "position": { "x": 2, "y": 2 }, "label": "SEO" },
+    { "type": "desk", "position": { "x": 5, "y": 1 }, "label": "CREO" },
+    { "type": "desk", "position": { "x": 7, "y": 3 }, "label": "TEXT" },
+    { "type": "desk", "position": { "x": 4, "y": 4 }, "label": "UA" },
+    { "type": "plant", "position": { "x": 0, "y": 0 } },
+    { "type": "whiteboard", "position": { "x": 9, "y": 1 } },
+    { "type": "coffee_machine", "position": { "x": 0, "y": 7 } }
+  ]
+}
