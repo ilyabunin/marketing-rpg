@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import ChatPanel from "@/components/ChatPanel";
+import Header from "@/components/Header";
+import PartyBar from "@/components/PartyBar";
 import { supabase } from "@/lib/supabase-browser";
 
 const RPGScene = dynamic(() => import("@/components/RPGScene"), { ssr: false });
@@ -48,39 +50,53 @@ export default function Home() {
 
   if (!ready) {
     return (
-      <div className="h-screen flex items-center justify-center bg-[#1a1025] text-gray-500">
-        Loading...
+      <div className="h-screen flex items-center justify-center bg-rpg-bg">
+        <div className="font-pixel text-sm text-rpg-gold animate-pulse">
+          Loading...
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="h-screen flex">
-      {/* RPG Scene — left */}
-      <div className="flex-1 relative">
-        <div className="absolute top-3 left-4 text-amber-400 font-bold text-lg z-10">
-          Profee Marketing Playground
+    <div className="h-screen flex flex-col bg-rpg-bg">
+      <Header isGuest={isGuest} />
+
+      <div className="flex-1 flex min-h-0">
+        {/* RPG Scene — left ~65% */}
+        <div
+          className={`relative ${
+            selected ? "hidden md:block md:w-[65%]" : "w-full"
+          }`}
+        >
+          {characters.length > 0 && (
+            <RPGScene
+              characters={characters}
+              onSelectCharacter={handleSelect}
+            />
+          )}
         </div>
-        {isGuest && (
-          <div className="absolute top-3 right-4 text-gray-500 text-xs z-10">
-            Guest mode — AI disabled
+
+        {/* Chat Panel — right ~35% */}
+        {selected && (
+          <div className="w-full md:w-[35%] h-full">
+            <ChatPanel
+              character={selected}
+              userId={userId}
+              isGuest={isGuest}
+              onClose={() => setSelected(null)}
+            />
           </div>
-        )}
-        {characters.length > 0 && (
-          <RPGScene characters={characters} onSelectCharacter={handleSelect} />
         )}
       </div>
 
-      {/* Chat Panel — right */}
-      {selected && (
-        <div className="w-[380px] h-screen">
-          <ChatPanel
-            character={selected}
-            userId={userId}
-            isGuest={isGuest}
-            onClose={() => setSelected(null)}
-          />
-        </div>
+      {/* Party bar at bottom */}
+      {characters.length > 0 && (
+        <PartyBar
+          characters={characters}
+          selectedId={selected?.id ?? null}
+          onSelect={handleSelect}
+        />
       )}
     </div>
   );

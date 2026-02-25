@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase-browser";
+import RPGPanel from "@/components/ui/RPGPanel";
+import RPGButton from "@/components/ui/RPGButton";
+import RPGInput from "@/components/ui/RPGInput";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -24,18 +27,15 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     setLoading(true);
-
     const { error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
-
     if (authError) {
       setError(authError.message);
       setLoading(false);
       return;
     }
-
     router.push("/");
   }
 
@@ -48,95 +48,88 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#1a1025]">
+    <div className="min-h-screen flex items-center justify-center bg-rpg-bg">
       <div className="w-full max-w-sm">
-        {!showGuest ? (
-          <form
-            onSubmit={handleSignIn}
-            className="bg-[#2a1f3d] p-8 rounded-lg"
-          >
-            <h1 className="text-2xl font-bold text-amber-400 mb-6 text-center">
-              Profee Marketing Playground
-            </h1>
-
-            {error && (
-              <div className="bg-red-900/50 text-red-300 p-3 rounded mb-4 text-sm">
-                {error}
-              </div>
-            )}
-
-            <input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-3 mb-3 bg-[#1a1025] border border-[#4a3f5d] rounded text-white placeholder-gray-500 outline-none focus:border-amber-400"
-              required
-            />
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-3 mb-4 bg-[#1a1025] border border-[#4a3f5d] rounded text-white placeholder-gray-500 outline-none focus:border-amber-400"
-              required
-            />
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full p-3 bg-amber-500 hover:bg-amber-600 text-black font-bold rounded disabled:opacity-50"
-            >
-              {loading ? "..." : "Sign In"}
-            </button>
-
-            <div className="mt-4 pt-4 border-t border-[#4a3f5d]">
-              <button
-                type="button"
-                onClick={() => setShowGuest(true)}
-                className="w-full p-3 bg-[#1a1025] border border-[#4a3f5d] hover:border-amber-400 text-gray-300 rounded text-sm"
+        <RPGPanel>
+          {!showGuest ? (
+            <form onSubmit={handleSignIn} className="p-4 space-y-4">
+              <h1
+                className="font-pixel text-sm text-rpg-gold text-center"
+                style={{ textShadow: "2px 2px 0 #1a1a2e" }}
               >
-                Continue as Guest
-              </button>
-            </div>
-          </form>
-        ) : (
-          <form
-            onSubmit={handleGuestLogin}
-            className="bg-[#2a1f3d] p-8 rounded-lg"
-          >
-            <h1 className="text-2xl font-bold text-amber-400 mb-2 text-center">
-              Guest Access
-            </h1>
-            <p className="text-gray-500 text-xs text-center mb-6">
-              Browse the office, but AI features require sign in
-            </p>
+                Profee Marketing
+                <br />
+                Playground
+              </h1>
 
-            <input
-              type="text"
-              placeholder="Your name"
-              value={guestName}
-              onChange={(e) => setGuestName(e.target.value)}
-              className="w-full p-3 mb-4 bg-[#1a1025] border border-[#4a3f5d] rounded text-white placeholder-gray-500 outline-none focus:border-amber-400"
-              required
-            />
+              {error && (
+                <div className="font-vt323 text-base text-red-400 bg-red-900/30 p-2">
+                  {error}
+                </div>
+              )}
 
-            <button
-              type="submit"
-              className="w-full p-3 bg-[#4a3f5d] hover:bg-[#5a4f6d] text-white font-bold rounded"
-            >
-              Enter as Guest
-            </button>
+              <RPGInput
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+              <RPGInput
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
 
-            <button
-              type="button"
-              onClick={() => setShowGuest(false)}
-              className="w-full mt-3 text-gray-400 text-sm hover:text-amber-400"
-            >
-              Back to Sign In
-            </button>
-          </form>
-        )}
+              <RPGButton type="submit" disabled={loading} className="w-full">
+                {loading ? "..." : "SIGN IN"}
+              </RPGButton>
+
+              <div className="border-t-2 border-rpg-border-inner pt-4">
+                <RPGButton
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setShowGuest(true)}
+                  className="w-full"
+                >
+                  GUEST MODE
+                </RPGButton>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handleGuestLogin} className="p-4 space-y-4">
+              <h1 className="font-pixel text-sm text-rpg-gold text-center">
+                Guest Access
+              </h1>
+              <p className="font-vt323 text-base text-rpg-border-inner text-center">
+                Browse office, AI requires sign in
+              </p>
+
+              <RPGInput
+                type="text"
+                placeholder="Your name"
+                value={guestName}
+                onChange={(e) => setGuestName(e.target.value)}
+                required
+              />
+
+              <RPGButton type="submit" className="w-full">
+                ENTER
+              </RPGButton>
+
+              <RPGButton
+                type="button"
+                variant="secondary"
+                onClick={() => setShowGuest(false)}
+                className="w-full"
+              >
+                BACK
+              </RPGButton>
+            </form>
+          )}
+        </RPGPanel>
       </div>
     </div>
   );
