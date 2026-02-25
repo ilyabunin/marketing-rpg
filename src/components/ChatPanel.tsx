@@ -6,6 +6,7 @@ import RPGButton from "./ui/RPGButton";
 import RPGInput from "./ui/RPGInput";
 import TaskSelector from "./TaskSelector";
 import ChatMessage from "./ChatMessage";
+import CharacterAvatar from "./CharacterAvatar";
 
 interface TaskOption {
   id: string;
@@ -99,13 +100,16 @@ export default function ChatPanel({
     <RPGPanel className="flex flex-col h-full">
       {/* Header */}
       <div className="p-3 border-b-2 border-rpg-border-inner flex justify-between items-start">
-        <div>
-          <h2 className="font-pixel text-sm text-rpg-gold">
-            {character.name_ru}
-          </h2>
-          <p className="font-vt323 text-base text-rpg-text mt-1">
-            {character.role}
-          </p>
+        <div className="flex gap-3 items-center">
+          <CharacterAvatar characterId={character.id} size={64} />
+          <div>
+            <h2 className="font-pixel text-sm text-rpg-gold">
+              {character.name_ru}
+            </h2>
+            <p className="font-vt323 text-base text-rpg-text mt-1">
+              {character.role}
+            </p>
+          </div>
         </div>
         <RPGButton onClick={onClose} variant="secondary" className="text-xs">
           ✕
@@ -127,6 +131,7 @@ export default function ChatPanel({
           role="assistant"
           content={character.greeting}
           isLatest={messages.length === 0}
+          characterId={character.id}
         />
         {isGuest && (
           <div className="font-pixel text-[10px] text-rpg-gold bg-rpg-gold/10 p-3">
@@ -141,6 +146,7 @@ export default function ChatPanel({
             isLatest={
               msg.role === "assistant" && i === messages.length - 1
             }
+            characterId={character.id}
           />
         ))}
         {loading && (

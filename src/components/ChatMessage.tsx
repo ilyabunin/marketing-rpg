@@ -3,14 +3,16 @@
 import { useState, useCallback } from "react";
 import RPGPanel from "./ui/RPGPanel";
 import TypewriterText from "./TypewriterText";
+import CharacterAvatar from "./CharacterAvatar";
 
 interface Props {
   role: "user" | "assistant";
   content: string;
   isLatest: boolean;
+  characterId?: string;
 }
 
-export default function ChatMessage({ role, content, isLatest }: Props) {
+export default function ChatMessage({ role, content, isLatest, characterId }: Props) {
   const [typewriterDone, setTypewriterDone] = useState(false);
   const onComplete = useCallback(() => setTypewriterDone(true), []);
 
@@ -27,8 +29,14 @@ export default function ChatMessage({ role, content, isLatest }: Props) {
   return (
     <RPGPanel className="mr-4">
       <div className="flex gap-3">
-        <div className="w-8 h-8 bg-rpg-border-inner flex-shrink-0 flex items-center justify-center">
-          <span className="font-pixel text-[8px] text-rpg-gold">NPC</span>
+        <div className="flex-shrink-0">
+          {characterId ? (
+            <CharacterAvatar characterId={characterId} size={32} />
+          ) : (
+            <div className="w-8 h-8 bg-rpg-border-inner flex items-center justify-center">
+              <span className="font-pixel text-[8px] text-rpg-gold">NPC</span>
+            </div>
+          )}
         </div>
         <div className="font-vt323 text-lg leading-relaxed text-rpg-text whitespace-pre-wrap flex-1">
           {isLatest && !typewriterDone ? (
