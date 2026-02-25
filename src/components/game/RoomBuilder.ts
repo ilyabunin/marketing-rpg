@@ -1,4 +1,4 @@
-const TILE = 16;
+const TILE = 48; // 16px * 3x scale
 const COLS = 20;
 const ROWS = 15;
 
@@ -36,7 +36,7 @@ export function drawWalls(scene: Phaser.Scene) {
   }
 
   // Wall trim line
-  gfx.lineStyle(2, COLORS.wallTrim, 0.8);
+  gfx.lineStyle(3, COLORS.wallTrim, 0.8);
   gfx.moveTo(0, TILE * 2);
   gfx.lineTo(COLS * TILE, TILE * 2);
   gfx.strokePath();
@@ -54,7 +54,7 @@ export function drawWalls(scene: Phaser.Scene) {
   }
 
   // Side wall trim
-  gfx.lineStyle(2, COLORS.wallTrim, 0.6);
+  gfx.lineStyle(3, COLORS.wallTrim, 0.6);
   gfx.moveTo(TILE, 0);
   gfx.lineTo(TILE, ROWS * TILE);
   gfx.moveTo((COLS - 1) * TILE, 0);

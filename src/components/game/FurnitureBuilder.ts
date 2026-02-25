@@ -1,4 +1,4 @@
-const TILE = 16;
+const TILE = 48; // 16px * 3x scale
 
 interface FurnitureItem {
   type: string;
@@ -62,7 +62,7 @@ export function drawFurniture(scene: Phaser.Scene) {
     if (f.label) {
       scene.add
         .text(px + pw / 2, py + ph / 2, f.label, {
-          fontSize: "7px",
+          fontSize: "12px",
           color: "#e0d5c1",
           fontFamily: '"Press Start 2P"',
         })

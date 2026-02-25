@@ -24,11 +24,23 @@ const ROWS = 15;
 export default function RPGScene({ characters, onSelectCharacter }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Phaser.Game | null>(null);
+  const mountedRef = useRef(false);
 
   useEffect(() => {
-    if (!containerRef.current || gameRef.current) return;
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Prevent duplicate games from React StrictMode
+    if (gameRef.current) {
+      gameRef.current.destroy(true);
+      gameRef.current = null;
+    }
+
+    let destroyed = false;
 
     import("phaser").then(async (Phaser) => {
+      if (destroyed) return;
+
       const { drawFloor, drawWalls } = await import("./game/RoomBuilder");
       const { drawFurniture } = await import("./game/FurnitureBuilder");
       const {
@@ -37,18 +49,17 @@ export default function RPGScene({ characters, onSelectCharacter }: Props) {
         placeCharacters,
       } = await import("./game/CharacterSprites");
 
+      if (destroyed || !container) return;
+
       class OfficeScene extends Phaser.Scene {
         constructor() {
           super("office");
         }
-
         preload() {
           preloadCharacters(this);
         }
-
         create() {
           this.cameras.main.setBackgroundColor("#0f0f23");
-          this.cameras.main.setZoom(SCALE);
           drawFloor(this);
           drawWalls(this);
           drawFurniture(this);
@@ -57,9 +68,9 @@ export default function RPGScene({ characters, onSelectCharacter }: Props) {
         }
       }
 
-      gameRef.current = new Phaser.Game({
+      const game = new Phaser.Game({
         type: Phaser.AUTO,
-        parent: containerRef.current!,
+        parent: container,
         width: COLS * TILE * SCALE,
         height: ROWS * TILE * SCALE,
         backgroundColor: "#0f0f23",
@@ -70,9 +81,11 @@ export default function RPGScene({ characters, onSelectCharacter }: Props) {
         },
         pixelArt: true,
       });
+      gameRef.current = game;
     });
 
     return () => {
+      destroyed = true;
       gameRef.current?.destroy(true);
       gameRef.current = null;
     };

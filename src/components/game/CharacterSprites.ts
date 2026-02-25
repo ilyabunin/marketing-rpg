@@ -1,4 +1,5 @@
-const TILE = 16;
+const TILE = 48; // 16px * 3x scale
+const SPRITE_SCALE = 3;
 
 interface CharacterData {
   id: string;
@@ -68,16 +69,17 @@ export function placeCharacters(
     const cy = pos.y * TILE + TILE / 2;
 
     const sprite = scene.add.sprite(cx, cy, spriteName);
+    sprite.setScale(SPRITE_SCALE);
     sprite.play(`${spriteName}-idle`);
     sprite.setInteractive({ useHandCursor: true });
 
     const nameText = scene.add
-      .text(cx, cy - 30, c.name_ru, {
-        fontSize: "5px",
+      .text(cx, cy - 80, c.name_ru, {
+        fontSize: "12px",
         color: "#f0c040",
         fontFamily: '"Press Start 2P"',
         stroke: "#0f0f23",
-        strokeThickness: 2,
+        strokeThickness: 3,
       })
       .setOrigin(0.5)
       .setVisible(false);
