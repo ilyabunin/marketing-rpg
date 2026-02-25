@@ -4,9 +4,15 @@ import CharacterAvatar from "./CharacterAvatar";
 
 interface CharacterData {
   id: string;
+  name: string;
   name_ru: string;
   role: string;
   greeting: string;
+  bio: string;
+  portraitFile: string;
+  color: string;
+  skills: string[];
+  default_model?: string;
   position: { x: number; y: number };
   tasks: { id: string; name: string; description: string }[];
 }

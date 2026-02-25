@@ -4,9 +4,15 @@ import { useEffect, useRef } from "react";
 
 interface CharacterData {
   id: string;
+  name: string;
   name_ru: string;
   role: string;
   greeting: string;
+  bio: string;
+  portraitFile: string;
+  color: string;
+  skills: string[];
+  default_model?: string;
   position: { x: number; y: number };
   tasks: { id: string; name: string; description: string }[];
 }
@@ -14,12 +20,13 @@ interface CharacterData {
 interface Props {
   characters: CharacterData[];
   onSelectCharacter: (character: CharacterData) => void;
+  onBioCharacter?: (character: CharacterData) => void;
 }
 
 const CANVAS_W = 960;
 const CANVAS_H = 640;
 
-export default function RPGScene({ characters, onSelectCharacter }: Props) {
+export default function RPGScene({ characters, onSelectCharacter, onBioCharacter }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Phaser.Game | null>(null);
 
@@ -60,7 +67,7 @@ export default function RPGScene({ characters, onSelectCharacter }: Props) {
           drawWalls(this);
           drawFurniture(this);
           createCharacterAnimations(this);
-          placeCharacters(this, characters, onSelectCharacter);
+          placeCharacters(this, characters, onSelectCharacter, onBioCharacter);
         }
       }
 
@@ -85,7 +92,7 @@ export default function RPGScene({ characters, onSelectCharacter }: Props) {
       gameRef.current?.destroy(true);
       gameRef.current = null;
     };
-  }, [characters, onSelectCharacter]);
+  }, [characters, onSelectCharacter, onBioCharacter]);
 
   return <div ref={containerRef} className="w-full h-full" />;
 }

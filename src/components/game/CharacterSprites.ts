@@ -5,9 +5,15 @@ const ZONE_HALF = 100; // home zone is ±100px from desk center
 
 interface CharacterData {
   id: string;
+  name: string;
   name_ru: string;
   role: string;
   greeting: string;
+  bio: string;
+  portraitFile: string;
+  color: string;
+  skills: string[];
+  default_model?: string;
   position: { x: number; y: number };
   tasks: { id: string; name: string; description: string }[];
 }
@@ -72,7 +78,8 @@ export function createCharacterAnimations(scene: Phaser.Scene) {
 export function placeCharacters(
   scene: Phaser.Scene,
   characters: CharacterData[],
-  onClick: (c: CharacterData) => void
+  onClick: (c: CharacterData) => void,
+  onBio?: (c: CharacterData) => void
 ) {
   const charRefs = new Map<string, CharRef>();
   let selectedId: string | null = null;
@@ -146,7 +153,10 @@ export function placeCharacters(
 
     bioBtn.on("pointerdown", () => {
       justClickedUI = true;
-      // Bio card — will be wired up in Step 4
+      const data = ref.data;
+      clearMenu();
+      selectedId = null;
+      if (onBio) onBio(data);
     });
 
     chatBtn.on("pointerdown", () => {

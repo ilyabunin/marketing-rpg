@@ -12,6 +12,11 @@ export async function GET() {
     sprite_id: c.sprite_id,
     position: c.position,
     greeting: c.greeting,
+    bio: c.bio || "",
+    portraitFile: c.portraitFile || "",
+    color: c.color || "#4a4a6a",
+    skills: c.skills || [],
+    default_model: c.default_model,
     tasks: getTasksForCharacter(c.id).map((t) => ({
       id: t.id,
       name: t.name,

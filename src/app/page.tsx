@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import ChatPanel from "@/components/ChatPanel";
+import BioCard from "@/components/BioCard";
 import Header from "@/components/Header";
 import PartyBar from "@/components/PartyBar";
 import { supabase } from "@/lib/supabase-browser";
@@ -12,9 +13,15 @@ const RPGScene = dynamic(() => import("@/components/RPGScene"), { ssr: false });
 
 interface CharacterData {
   id: string;
+  name: string;
   name_ru: string;
   role: string;
   greeting: string;
+  bio: string;
+  portraitFile: string;
+  color: string;
+  skills: string[];
+  default_model?: string;
   position: { x: number; y: number };
   tasks: { id: string; name: string; description: string }[];
 }
@@ -23,6 +30,7 @@ export default function Home() {
   const router = useRouter();
   const [characters, setCharacters] = useState<CharacterData[]>([]);
   const [selected, setSelected] = useState<CharacterData | null>(null);
+  const [bioCharacter, setBioCharacter] = useState<CharacterData | null>(null);
   const [userId, setUserId] = useState<string>("");
   const [isGuest, setIsGuest] = useState(false);
   const [ready, setReady] = useState(false);
@@ -46,7 +54,21 @@ export default function Home() {
       .catch(() => {});
   }, [router]);
 
-  const handleSelect = useCallback((c: CharacterData) => setSelected(c), []);
+  const handleChat = useCallback((c: CharacterData) => {
+    setBioCharacter(null);
+    setSelected(c);
+  }, []);
+
+  const handleBio = useCallback((c: CharacterData) => {
+    setBioCharacter(c);
+  }, []);
+
+  const handleBioStartChat = useCallback(() => {
+    if (bioCharacter) {
+      setBioCharacter(null);
+      setSelected(bioCharacter);
+    }
+  }, [bioCharacter]);
 
   if (!ready) {
     return (
@@ -63,7 +85,7 @@ export default function Home() {
       <Header isGuest={isGuest} />
 
       <div className="flex-1 flex min-h-0">
-        {/* RPG Scene — left ~65% */}
+        {/* RPG Scene */}
         <div
           className={`relative ${
             selected ? "hidden md:block md:w-[65%]" : "w-full"
@@ -72,12 +94,13 @@ export default function Home() {
           {characters.length > 0 && (
             <RPGScene
               characters={characters}
-              onSelectCharacter={handleSelect}
+              onSelectCharacter={handleChat}
+              onBioCharacter={handleBio}
             />
           )}
         </div>
 
-        {/* Chat Panel — right ~35% */}
+        {/* Chat Panel */}
         {selected && (
           <div className="w-full md:w-[35%] h-full">
             <ChatPanel
@@ -90,12 +113,21 @@ export default function Home() {
         )}
       </div>
 
-      {/* Party bar at bottom */}
+      {/* Party bar */}
       {characters.length > 0 && (
         <PartyBar
           characters={characters}
           selectedId={selected?.id ?? null}
-          onSelect={handleSelect}
+          onSelect={handleChat}
+        />
+      )}
+
+      {/* Bio Card modal */}
+      {bioCharacter && (
+        <BioCard
+          character={bioCharacter}
+          onClose={() => setBioCharacter(null)}
+          onStartChat={handleBioStartChat}
         />
       )}
     </div>

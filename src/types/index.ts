@@ -17,6 +17,10 @@ export interface Character {
   webhook_on_complete: string;
   system_prompt: string;
   greeting: string;
+  bio?: string;
+  portraitFile?: string;
+  color?: string;
+  skills?: string[];
 }
 
 export interface Task {
