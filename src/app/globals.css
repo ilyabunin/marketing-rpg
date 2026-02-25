@@ -8,18 +8,55 @@
 
 body {
   margin: 0;
-  background: #1a1025;
-  color: #e0e0e0;
-  font-family: "Courier New", monospace;
+  background: #0f0f23;
+  color: #e0d5c1;
+  font-family: "VT323", monospace;
 }
 
+/* Pixel font utility classes */
+.font-pixel {
+  font-family: "Press Start 2P", cursive;
+}
+
+.font-vt323 {
+  font-family: "VT323", monospace;
+}
+
+/* RPG Panel base styles */
+.rpg-panel {
+  image-rendering: pixelated;
+}
+
+/* RPG scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #1a1025;
+  background: #0f0f23;
+  border-left: 2px solid #4a4a6a;
 }
 ::-webkit-scrollbar-thumb {
-  background: #4a3f5d;
-  border-radius: 3px;
+  background: #e0d5c1;
+  border: 1px solid #4a4a6a;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #f0c040;
+}
+
+/* Typewriter animation */
+@keyframes typewriter {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+.rpg-typewriter {
+  overflow: hidden;
+  white-space: pre-wrap;
+  animation: typewriter 0.5s steps(20) forwards;
+}
+
+/* Pixel rendering for sprites */
+.pixel-art {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
 }

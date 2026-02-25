@@ -9,8 +9,20 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
+        rpg: {
+          bg: "#0f0f23",
+          panel: "#1a1a2e",
+          border: "#e0d5c1",
+          "border-inner": "#4a4a6a",
+          gold: "#f0c040",
+          text: "#e0d5c1",
+          green: "#40c040",
+          blue: "#4080c0",
+        },
+      },
+      fontFamily: {
+        pixel: ['"Press Start 2P"', "cursive"],
+        vt323: ['"VT323"', "monospace"],
       },
     },
   },
