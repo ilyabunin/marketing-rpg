@@ -88,7 +88,7 @@ export default function Home() {
         {/* RPG Scene */}
         <div
           className={`relative ${
-            selected ? "hidden md:block md:w-[65%]" : "w-full"
+            selected ? "hidden md:block md:flex-1" : "w-full"
           }`}
         >
           {characters.length > 0 && (
@@ -100,9 +100,9 @@ export default function Home() {
           )}
         </div>
 
-        {/* Chat Panel */}
+        {/* Chat Panel — fixed 380px */}
         {selected && (
-          <div className="w-full md:w-[35%] h-full">
+          <div className="w-full md:w-auto h-full flex-shrink-0">
             <ChatPanel
               character={selected}
               userId={userId}
