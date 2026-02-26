@@ -173,6 +173,7 @@ export function placeCharacters(
       .text(-32, 0, "Bio", {
         fontSize: "15px", color: "#e0d5c1",
         fontFamily: '"Pixelify Sans", sans-serif',
+        padding: { x: 8, y: 4 },
       })
       .setOrigin(0.5).setInteractive({ useHandCursor: true });
 
@@ -180,6 +181,7 @@ export function placeCharacters(
       .text(32, 0, "Chat", {
         fontSize: "15px", color: "#e0d5c1",
         fontFamily: '"Pixelify Sans", sans-serif',
+        padding: { x: 8, y: 4 },
       })
       .setOrigin(0.5).setInteractive({ useHandCursor: true });
 
@@ -379,7 +381,11 @@ export function placeCharacters(
     const sprite = scene.add.sprite(startX, startY, spriteName);
     sprite.setScale(SPRITE_SCALE);
     sprite.setFrame(0);
-    sprite.setInteractive({ useHandCursor: true });
+    sprite.setInteractive({
+      hitArea: new Phaser.Geom.Rectangle(-16, -16, 64, 64),
+      hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+      useHandCursor: true,
+    });
     sprite.setDepth(5); // above furniture, below walls
 
     const info = DISPLAY_INFO[c.id] || { name: c.name, role: c.role };
