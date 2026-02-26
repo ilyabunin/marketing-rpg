@@ -51,6 +51,10 @@ export default function RPGScene({ characters, onSelectCharacter, onBioCharacter
         createCharacterAnimations,
         placeCharacters,
       } = await import("./game/CharacterSprites");
+      const {
+        preloadSpeechBubbles,
+        initSocialSystem,
+      } = await import("./game/SocialSystem");
 
       if (destroyed || !container) return;
 
@@ -60,6 +64,7 @@ export default function RPGScene({ characters, onSelectCharacter, onBioCharacter
         }
         preload() {
           preloadCharacters(this);
+          preloadSpeechBubbles(this);
         }
         create() {
           this.cameras.main.setBackgroundColor("#0f0f23");
@@ -67,7 +72,8 @@ export default function RPGScene({ characters, onSelectCharacter, onBioCharacter
           drawWalls(this);
           drawFurniture(this);
           createCharacterAnimations(this);
-          placeCharacters(this, characters, onSelectCharacter, onBioCharacter);
+          const charSystem = placeCharacters(this, characters, onSelectCharacter, onBioCharacter);
+          initSocialSystem(this, charSystem);
         }
       }
 
