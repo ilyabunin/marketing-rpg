@@ -60,10 +60,12 @@ export default function Home() {
   useEffect(() => {
     function handleMouseMove(e: MouseEvent) {
       if (!isDragging.current) return;
+      e.preventDefault();
       const newWidth = window.innerWidth - e.clientX;
       setChatWidth(Math.max(380, Math.min(newWidth, window.innerWidth * 0.8)));
     }
     function handleMouseUp() {
+      if (!isDragging.current) return;
       isDragging.current = false;
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
@@ -86,7 +88,8 @@ export default function Home() {
     };
   }, []);
 
-  const handleDragStart = useCallback(() => {
+  const handleDragStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
     isDragging.current = true;
     document.body.style.cursor = "col-resize";
     document.body.style.userSelect = "none";
@@ -122,13 +125,10 @@ export default function Home() {
     <div className="h-screen flex flex-col bg-rpg-bg">
       <Header isGuest={isGuest} />
 
-      <div className="flex-1 flex min-h-0">
-        {/* RPG Scene */}
-        <div
-          className={`relative ${
-            selected ? "hidden md:block md:flex-1" : "w-full"
-          }`}
-        >
+      {/* Main area — relative so chat can overlay */}
+      <div className="flex-1 relative min-h-0">
+        {/* RPG Scene — always full width */}
+        <div className="w-full h-full">
           {characters.length > 0 && (
             <RPGScene
               characters={characters}
@@ -138,57 +138,54 @@ export default function Home() {
           )}
         </div>
 
-        {/* Drag handle + Chat Panel */}
+        {/* Chat overlay — positioned absolute, covers right side over canvas */}
         {selected && (
-          <>
+          <div
+            className="absolute top-0 right-0 bottom-0 hidden md:flex"
+            style={{ width: chatWidth, zIndex: 20 }}
+          >
             {/* Drag handle */}
             <div
-              className="hidden md:flex items-center justify-center flex-shrink-0"
+              className="flex items-center justify-center flex-shrink-0"
               style={{
                 width: 6,
                 cursor: "col-resize",
-                backgroundColor: "#333",
+                backgroundColor: "#444",
               }}
               onMouseDown={handleDragStart}
               onTouchStart={handleDragStart}
+              onMouseEnter={(e) => { (e.target as HTMLElement).style.backgroundColor = "#c8a84e"; }}
+              onMouseLeave={(e) => { (e.target as HTMLElement).style.backgroundColor = "#444"; }}
             >
-              <div
-                style={{
-                  width: 2,
-                  height: 32,
-                  backgroundColor: "#666",
-                  borderRadius: 1,
-                }}
-              />
+              <div style={{ width: 2, height: 40, backgroundColor: "#888", borderRadius: 1 }} />
             </div>
 
-            {/* Chat Panel */}
-            <div
-              className="w-full md:w-auto h-full flex-shrink-0"
-              style={{ width: undefined }}
-            >
-              <div className="h-full hidden md:block" style={{ width: chatWidth }}>
-                <ChatPanel
-                  character={selected}
-                  userId={userId}
-                  isGuest={isGuest}
-                  onClose={() => setSelected(null)}
-                />
-              </div>
-              <div className="h-full md:hidden">
-                <ChatPanel
-                  character={selected}
-                  userId={userId}
-                  isGuest={isGuest}
-                  onClose={() => setSelected(null)}
-                />
-              </div>
+            {/* Chat panel */}
+            <div className="flex-1 h-full">
+              <ChatPanel
+                character={selected}
+                userId={userId}
+                isGuest={isGuest}
+                onClose={() => setSelected(null)}
+              />
             </div>
-          </>
+          </div>
+        )}
+
+        {/* Mobile: full-screen chat */}
+        {selected && (
+          <div className="absolute inset-0 md:hidden" style={{ zIndex: 20 }}>
+            <ChatPanel
+              character={selected}
+              userId={userId}
+              isGuest={isGuest}
+              onClose={() => setSelected(null)}
+            />
+          </div>
         )}
       </div>
 
-      {/* Party bar */}
+      {/* Party bar — always visible below */}
       {characters.length > 0 && (
         <PartyBar
           characters={characters}

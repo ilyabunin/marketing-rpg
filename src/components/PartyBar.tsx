@@ -120,19 +120,19 @@ export default function PartyBar({ characters, selectedId, onSelect }: Props) {
                   border: "1px solid #c8a84e",
                 }}
               >
-                <div className="font-pixel" style={{ fontSize: 11, color: "#c8a84e" }}>
+                <div className="font-body" style={{ fontSize: 14, color: "#ffffff" }}>
                   {c.name_ru}
                 </div>
-                <div className="font-body" style={{ fontSize: 10, color: "#6a6a8a" }}>
+                <div className="font-body" style={{ fontSize: 12, color: "#888888" }}>
                   {c.role}
                 </div>
                 {isWorking && (
-                  <div className="font-pixel" style={{ fontSize: 9, color: "#f0a030" }}>
+                  <div className="font-pixel" style={{ fontSize: 11, color: "#f0a030" }}>
                     Working...
                   </div>
                 )}
                 {isDone && (
-                  <div className="font-pixel" style={{ fontSize: 9, color: "#4ad98a" }}>
+                  <div className="font-pixel" style={{ fontSize: 11, color: "#4ad98a" }}>
                     Done!
                   </div>
                 )}

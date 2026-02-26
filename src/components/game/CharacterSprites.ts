@@ -140,7 +140,7 @@ export function placeCharacters(
 
     const bioBtn = scene.add
       .text(-32, 0, "Bio", {
-        fontSize: "13px",
+        fontSize: "15px",
         color: "#e0d5c1",
         fontFamily: '"Pixelify Sans", sans-serif',
       })
@@ -149,7 +149,7 @@ export function placeCharacters(
 
     const chatBtn = scene.add
       .text(32, 0, "Chat", {
-        fontSize: "13px",
+        fontSize: "15px",
         color: "#e0d5c1",
         fontFamily: '"Pixelify Sans", sans-serif',
       })
@@ -264,7 +264,7 @@ export function placeCharacters(
     const info = DISPLAY_INFO[c.id] || { name: c.name, role: c.role };
 
     const roleText = scene.add.text(0, -8, info.role, {
-      fontSize: "16px",
+      fontSize: "18px",
       fontStyle: "bold",
       color: "#ffffff",
       fontFamily: '"Pixelify Sans", sans-serif',
@@ -272,16 +272,16 @@ export function placeCharacters(
       strokeThickness: 3,
     }).setOrigin(0.5);
 
-    const nameTextObj = scene.add.text(0, 8, info.name, {
-      fontSize: "13px",
+    const nameTextObj = scene.add.text(0, 10, info.name, {
+      fontSize: "15px",
       color: "#aaaaaa",
       fontFamily: '"Pixelify Sans", sans-serif',
       stroke: "#000000",
       strokeThickness: 3,
     }).setOrigin(0.5);
 
-    const statusText = scene.add.text(0, 22, "", {
-      fontSize: "12px",
+    const statusText = scene.add.text(0, 26, "", {
+      fontSize: "14px",
       fontStyle: "bold",
       color: "#f0c040",
       fontFamily: '"Pixelify Sans", sans-serif',
@@ -290,8 +290,8 @@ export function placeCharacters(
     }).setOrigin(0.5);
 
     // Background plate
-    const plateW = Math.max(roleText.width, nameTextObj.width) + 16;
-    const plateBg = scene.add.rectangle(0, 0, plateW, 40, 0x000000, 0.6);
+    const plateW = Math.max(roleText.width, nameTextObj.width) + 20;
+    const plateBg = scene.add.rectangle(0, 2, plateW, 48, 0x000000, 0.6);
 
     const labelContainer = scene.add.container(startX, startY - 52, [
       plateBg,

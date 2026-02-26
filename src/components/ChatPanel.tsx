@@ -127,10 +127,10 @@ export default function ChatPanel({
       >
         <CharacterAvatar characterId={character.id} size={36} />
         <div className="flex-1 min-w-0">
-          <h2 className="font-pixel text-rpg-gold truncate" style={{ fontSize: 22 }}>
+          <h2 className="font-pixel text-rpg-gold truncate" style={{ fontSize: 24 }}>
             {character.name_ru}
           </h2>
-          <p className="font-body truncate" style={{ fontSize: 15, color: "#888888" }}>
+          <p className="font-body truncate" style={{ fontSize: 17, color: "#888888" }}>
             {character.role}
           </p>
         </div>
@@ -148,7 +148,7 @@ export default function ChatPanel({
         className="px-5 py-2"
         style={{ borderBottom: "1px solid #2a2a4e" }}
       >
-        <div className="font-pixel text-rpg-gold mb-2" style={{ fontSize: 11 }}>
+        <div className="font-pixel text-rpg-gold mb-2" style={{ fontSize: 13 }}>
           QUESTS:
         </div>
         <div className="flex flex-wrap gap-1.5">
@@ -160,7 +160,7 @@ export default function ChatPanel({
                 onClick={() => setSelectedTask(t.id)}
                 className="font-pixel transition-colors"
                 style={{
-                  fontSize: 14,
+                  fontSize: 16,
                   padding: "4px 10px",
                   backgroundColor: isActive ? "#c8a84e" : "#2a2a4e",
                   color: isActive ? "#1a1a2e" : "#c8a84e",
@@ -189,7 +189,7 @@ export default function ChatPanel({
           <div className="flex-shrink-0">
             <CharacterAvatar characterId={character.id} size={36} />
           </div>
-          <p className="font-body text-rpg-text whitespace-pre-wrap" style={{ fontSize: 16, lineHeight: 1.6 }}>
+          <p className="font-body text-rpg-text whitespace-pre-wrap" style={{ fontSize: 18, lineHeight: 1.6 }}>
             {character.greeting}
           </p>
         </div>
@@ -220,7 +220,7 @@ export default function ChatPanel({
             )}
             <p
               className="font-body text-rpg-text whitespace-pre-wrap flex-1"
-              style={{ fontSize: 16, lineHeight: 1.6 }}
+              style={{ fontSize: 18, lineHeight: 1.6 }}
             >
               {msg.content}
             </p>
@@ -230,7 +230,7 @@ export default function ChatPanel({
         {loading && (
           <div
             className="font-pixel text-rpg-gold animate-pulse"
-            style={{ fontSize: 12, padding: "8px 12px" }}
+            style={{ fontSize: 14, padding: "8px 12px" }}
           >
             Working...
           </div>
@@ -258,7 +258,7 @@ export default function ChatPanel({
           disabled={!canSend || loading}
           className="flex-1 font-body text-rpg-text placeholder-gray-600 outline-none disabled:opacity-50"
           style={{
-            fontSize: 16,
+            fontSize: 18,
             padding: "10px 12px",
             backgroundColor: "#0f0f23",
             border: "1px solid #2a2a4e",
@@ -269,7 +269,7 @@ export default function ChatPanel({
           disabled={!canSend || !input.trim() || loading}
           className="font-pixel text-rpg-gold disabled:opacity-30 hover:bg-rpg-gold/10 transition-colors"
           style={{
-            fontSize: 15,
+            fontSize: 17,
             padding: "10px 14px",
             backgroundColor: "#2a2a4e",
             border: "1px solid #3a3a5a",
@@ -290,7 +290,7 @@ export default function ChatPanel({
             onClick={handleWebhook}
             className="w-full font-pixel text-rpg-text hover:text-rpg-gold transition-colors"
             style={{
-              fontSize: 15,
+              fontSize: 17,
               padding: "8px",
               backgroundColor: "#2a2a4e",
               border: "1px solid #3a3a5a",

@@ -98,13 +98,13 @@ export default function BioCard({ character, onClose, onStartChat }: Props) {
             )}
 
             <div className="flex flex-col justify-center min-w-0">
-              <h2 className="font-pixel text-rpg-gold" style={{ fontSize: 28 }}>
+              <h2 className="font-pixel text-rpg-gold" style={{ fontSize: 30 }}>
                 {character.name_ru}
               </h2>
-              <p className="font-body mt-1" style={{ fontSize: 18, color: "#999999" }}>
+              <p className="font-body mt-1" style={{ fontSize: 20, color: "#999999" }}>
                 {character.role}
               </p>
-              <p className="font-body mt-1" style={{ fontSize: 15, color: "#666666" }}>
+              <p className="font-body mt-1" style={{ fontSize: 17, color: "#666666" }}>
                 AI: {modelLabel}
               </p>
             </div>
@@ -114,12 +114,12 @@ export default function BioCard({ character, onClose, onStartChat }: Props) {
           <div className="mb-5">
             <div
               className="flex items-center gap-2 mb-2"
-              style={{ color: "#c8a84e", fontSize: 14 }}
+              style={{ color: "#c8a84e", fontSize: 16 }}
             >
               <span className="font-body">About</span>
               <div className="flex-1 h-px" style={{ backgroundColor: "#3a3a5a" }} />
             </div>
-            <p className="font-body" style={{ fontSize: 16, lineHeight: 1.6, color: "#e0e0e0" }}>
+            <p className="font-body" style={{ fontSize: 18, lineHeight: 1.6, color: "#e0e0e0" }}>
               {character.bio}
             </p>
           </div>
@@ -129,7 +129,7 @@ export default function BioCard({ character, onClose, onStartChat }: Props) {
             <div className="mb-5">
               <div
                 className="flex items-center gap-2 mb-2"
-                style={{ color: "#c8a84e", fontSize: 14 }}
+                style={{ color: "#c8a84e", fontSize: 16 }}
               >
                 <span className="font-body">Skills</span>
                 <div className="flex-1 h-px" style={{ backgroundColor: "#3a3a5a" }} />
@@ -140,7 +140,7 @@ export default function BioCard({ character, onClose, onStartChat }: Props) {
                     key={skill}
                     className="font-pixel"
                     style={{
-                      fontSize: 14,
+                      fontSize: 16,
                       backgroundColor: "#2a2a4e",
                       border: "1px solid #c8a84e",
                       padding: "5px 12px",
@@ -159,7 +159,7 @@ export default function BioCard({ character, onClose, onStartChat }: Props) {
             <div className="mb-6">
               <div
                 className="flex items-center gap-2 mb-2"
-                style={{ color: "#c8a84e", fontSize: 14 }}
+                style={{ color: "#c8a84e", fontSize: 16 }}
               >
                 <span className="font-body">Available Quests</span>
                 <div className="flex-1 h-px" style={{ backgroundColor: "#3a3a5a" }} />
@@ -171,7 +171,7 @@ export default function BioCard({ character, onClose, onStartChat }: Props) {
                     onClick={() => onStartChat(task.id)}
                     className="w-full text-left px-3 py-2 font-body hover:text-rpg-gold transition-colors"
                     style={{
-                      fontSize: 16,
+                      fontSize: 18,
                       color: "#e0e0e0",
                       backgroundColor: "transparent",
                       border: "none",
@@ -190,7 +190,7 @@ export default function BioCard({ character, onClose, onStartChat }: Props) {
             onClick={() => onStartChat()}
             className="w-full py-3 font-pixel text-center transition-colors"
             style={{
-              fontSize: 18,
+              fontSize: 20,
               backgroundColor: "#c8a84e",
               color: "#1a1a2e",
               border: "none",
