@@ -192,11 +192,22 @@ export function initSocialSystem(
 
     if (!activeConversation) return; // interrupted
 
-    // Stop answerer, face each other
+    // Stop answerer
     answerer.interrupted = true;
     answerer.currentTween?.stop();
     answerer.currentTween = null;
     answerer.sprite.stop();
+
+    // Check distance — abort if too far apart (pathfinding failed)
+    const distBetween = Math.sqrt(
+      (asker.sprite.x - answerer.sprite.x) ** 2 +
+      (asker.sprite.y - answerer.sprite.y) ** 2
+    );
+    if (distBetween > 120) {
+      // Too far, cancel conversation
+      endConversation();
+      return;
+    }
 
     const fdx = asker.sprite.x - answerer.sprite.x;
     const fdy = asker.sprite.y - answerer.sprite.y;

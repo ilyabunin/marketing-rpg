@@ -141,7 +141,9 @@ export default function RPGScene({ characters, onSelectCharacter, onBioCharacter
       }
 
       const game = new Phaser.Game({
-        type: Phaser.AUTO,
+        // CANVAS mode required: tileset image is 31344px tall,
+        // exceeds WebGL max texture size (4096-16384px)
+        type: Phaser.CANVAS,
         parent: container,
         width: CANVAS_W,
         height: CANVAS_H,
