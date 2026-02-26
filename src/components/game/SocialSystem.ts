@@ -1,15 +1,15 @@
 /**
- * SocialSystem.ts — Character conversations with speech bubbles
+ * SocialSystem.ts — 1-on-1 character conversations with speech bubbles
  *
- * Characters periodically gather in groups and show pixel speech-bubble
+ * Characters periodically form PAIRS and show pixel speech-bubble
  * images above their heads, creating a lively office atmosphere.
  *
  * Rules:
- * - Max 3 conversations per minute, 20 sec cooldown between them
+ * - Only 1-on-1 conversations (exactly 2 characters)
+ * - Max 5 conversations per minute, 10 sec cooldown
  * - Only idle characters participate (not working, not in chat)
- * - Minimum 2 idle characters required
- * - Groups: 60% pairs, 25% trios, 15% quads/full
- * - Characters walk toward a meeting point, then show bubbles, then disperse
+ * - One character walks toward the other (not both to center)
+ * - After talking they return to wandering
  */
 
 import type { CharRef, CharacterSystemAPI } from "./CharacterSprites";
@@ -46,10 +46,10 @@ const BUBBLE_NAMES = [
   "pixel-speech-bubble-28",
 ];
 
-const CONVERSATION_COOLDOWN = 20_000; // 20 seconds
-const MAX_PER_MINUTE = 3;
-const BUBBLE_SCALE = 0.7;
-const GATHER_TIME = 3000; // ms to walk to meeting point before starting bubbles
+const CONVERSATION_COOLDOWN = 10_000; // 10 seconds between conversations
+const MAX_PER_MINUTE = 5;
+const BUBBLE_SCALE = 0.5; // 30% smaller than before (was 0.7)
+const APPROACH_TIME = 2500; // ms for one char to walk toward the other
 
 // Direction frame lookup for facing
 const FACE_FRAMES: Record<string, number> = {
@@ -75,7 +75,7 @@ export function initSocialSystem(
   let convThisMinute = 0;
   let minuteStart = scene.time.now;
   let activeConversation = false;
-  let currentParticipants: CharRef[] = [];
+  let currentPair: [CharRef, CharRef] | null = null;
 
   // ─── Helpers ───────────────────────────────────────────────
 
@@ -97,7 +97,6 @@ export function initSocialSystem(
   // ─── Speech bubble show/hide ───────────────────────────────
 
   function showBubble(char: CharRef): Phaser.GameObjects.Image | null {
-    // Safety: check the texture exists in cache
     const bName = randomBubbleName();
     if (!scene.textures.exists(bName)) return null;
 
@@ -107,7 +106,7 @@ export function initSocialSystem(
       bName
     );
     bubble.setScale(0);
-    bubble.setOrigin(0.5, 1); // anchor at bottom-center (above head)
+    bubble.setOrigin(0.5, 1);
     bubble.setDepth(8);
 
     scene.tweens.add({
@@ -137,103 +136,101 @@ export function initSocialSystem(
     lastConvTime = scene.time.now;
     convThisMinute++;
 
-    currentParticipants.forEach((p) => {
-      p.isTalking = false;
-      // Only restart walking if still idle
-      if (p.status === "idle") api.startWalking(p);
-    });
-    currentParticipants = [];
+    if (currentPair) {
+      currentPair.forEach((p) => {
+        p.isTalking = false;
+        if (p.status === "idle") api.startWalking(p);
+      });
+      currentPair = null;
+    }
   }
 
-  // ─── Conversation flow ─────────────────────────────────────
+  // ─── 1-on-1 Conversation ──────────────────────────────────
 
   function startConversation() {
     const idle = getIdleChars();
     if (idle.length < 2) return;
 
-    // Pick group size
-    const roll = Math.random();
-    let count: number;
-    if (roll < 0.6) count = 2;
-    else if (roll < 0.85) count = 3;
-    else count = Math.min(idle.length, 4 + Math.floor(Math.random() * 2));
-    count = Math.min(count, idle.length);
-
-    // Shuffle and pick participants
+    // Pick 2 random idle characters
     const shuffled = [...idle].sort(() => Math.random() - 0.5);
-    const participants = shuffled.slice(0, count);
+    const charA = shuffled[0]; // stays put
+    const charB = shuffled[1]; // walks toward charA
 
     activeConversation = true;
-    currentParticipants = participants;
+    currentPair = [charA, charB];
 
     // Mark as talking & stop walking
-    participants.forEach((p) => {
-      p.isTalking = true;
-      api.stopWalking(p);
-    });
+    charA.isTalking = true;
+    charB.isTalking = true;
+    api.stopWalking(charA);
+    api.stopWalking(charB);
 
-    // Meeting point — somewhere in the center of the room
-    const meetX = 350 + Math.random() * 550;
-    const meetY = 280 + Math.random() * 300;
+    // charB walks toward charA (stop ~35px away)
+    const dx = charA.sprite.x - charB.sprite.x;
+    const dy = charA.sprite.y - charB.sprite.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
 
-    // ── Phase 1: Walk toward meeting point ──
+    // Target: 35px from charA, on the line between them
+    let targetX = charB.sprite.x;
+    let targetY = charB.sprite.y;
+    if (dist > 40) {
+      const ratio = (dist - 35) / dist;
+      targetX = charB.sprite.x + dx * ratio;
+      targetY = charB.sprite.y + dy * ratio;
+    }
+    targetX = Math.max(48, Math.min(1200, targetX));
+    targetY = Math.max(48, Math.min(816, targetY));
 
-    participants.forEach((p, i) => {
-      // Arrange in a small circle around meeting point
-      const angle = (i / count) * Math.PI * 2;
-      const offsetX = Math.cos(angle) * 30;
-      const offsetY = Math.sin(angle) * 30;
-      const targetX = Math.max(48, Math.min(1200, meetX + offsetX));
-      const targetY = Math.max(48, Math.min(816, meetY + offsetY));
+    const moveDist = Math.sqrt(
+      (targetX - charB.sprite.x) ** 2 + (targetY - charB.sprite.y) ** 2
+    );
 
-      const dx = targetX - p.sprite.x;
-      const dy = targetY - p.sprite.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
+    if (moveDist > 5) {
+      const dir = getDirection(
+        targetX - charB.sprite.x,
+        targetY - charB.sprite.y
+      );
+      charB.sprite.play(`${charB.spriteName}-walk-${dir}`);
 
-      if (dist < 10) return; // already close enough
-
-      const dir = getDirection(dx, dy);
-      p.sprite.play(`${p.spriteName}-walk-${dir}`);
-
-      p.currentTween = scene.tweens.add({
-        targets: p.sprite,
+      charB.currentTween = scene.tweens.add({
+        targets: charB.sprite,
         x: targetX,
         y: targetY,
-        duration: (dist / 55) * 1000,
+        duration: Math.min((moveDist / 55) * 1000, APPROACH_TIME),
         ease: "Linear",
-        onUpdate: () => api.updateLabelPos(p),
+        onUpdate: () => api.updateLabelPos(charB),
         onComplete: () => {
-          p.currentTween = null;
-          p.sprite.stop();
-          p.sprite.setFrame(0);
-          api.updateLabelPos(p);
+          charB.currentTween = null;
+          charB.sprite.stop();
+          api.updateLabelPos(charB);
         },
       });
-    });
+    }
 
-    // ── Phase 2: Start bubbles after a fixed gather time ──
-    // (Don't wait for all arrivals — timeout-based is more robust)
+    // ── Phase 2: Start bubbles after approach time ──
 
-    scene.time.delayedCall(GATHER_TIME, () => {
+    scene.time.delayedCall(APPROACH_TIME, () => {
       if (!activeConversation) return;
 
-      // Stop any still-walking participants and face them toward center
-      participants.forEach((p) => {
-        if (p.currentTween) {
-          p.currentTween.stop();
-          p.currentTween = null;
-          p.sprite.stop();
-        }
-        const dx = meetX - p.sprite.x;
-        const dy = meetY - p.sprite.y;
-        const dir = getDirection(dx, dy);
-        p.sprite.setFrame(FACE_FRAMES[dir] ?? 0);
-        api.updateLabelPos(p);
-      });
+      // Stop charB if still walking, face each other
+      if (charB.currentTween) {
+        charB.currentTween.stop();
+        charB.currentTween = null;
+        charB.sprite.stop();
+      }
 
-      // Show speech bubbles sequentially
-      const totalBubbles =
-        participants.length * (1 + Math.floor(Math.random() * 2));
+      // Face each other
+      const fdx = charA.sprite.x - charB.sprite.x;
+      const fdy = charA.sprite.y - charB.sprite.y;
+      const dirAtoB = getDirection(-fdx, -fdy);
+      const dirBtoA = getDirection(fdx, fdy);
+      charA.sprite.setFrame(FACE_FRAMES[dirAtoB] ?? 0);
+      charB.sprite.setFrame(FACE_FRAMES[dirBtoA] ?? 0);
+      api.updateLabelPos(charA);
+      api.updateLabelPos(charB);
+
+      // Show 2-4 bubbles, alternating speakers
+      const totalBubbles = 2 + Math.floor(Math.random() * 3); // 2-4
       let bubbleIdx = 0;
 
       function showNextBubble() {
@@ -242,30 +239,28 @@ export function initSocialSystem(
           return;
         }
 
-        const speaker = participants[bubbleIdx % participants.length];
-        // Check speaker is still in conversation
+        const speaker = bubbleIdx % 2 === 0 ? charA : charB;
         if (!speaker.isTalking) {
           endConversation();
           return;
         }
 
         const bubble = showBubble(speaker);
-        const displayTime = 1500 + Math.random() * 1000;
+        const displayTime = 1200 + Math.random() * 800; // 1.2-2s
 
         scene.time.delayedCall(displayTime, () => {
           if (bubble) hideBubble(bubble);
           bubbleIdx++;
-          const pause = 500 + Math.random() * 1000;
+          const pause = 400 + Math.random() * 600; // 0.4-1s
           scene.time.delayedCall(pause, showNextBubble);
         });
       }
 
-      // Small pause then start
-      scene.time.delayedCall(300, showNextBubble);
+      scene.time.delayedCall(200, showNextBubble);
     });
 
-    // Safety timeout — force end after 15 seconds
-    scene.time.delayedCall(15_000, () => {
+    // Safety timeout — force end after 12 seconds
+    scene.time.delayedCall(12_000, () => {
       if (activeConversation) endConversation();
     });
   }
@@ -292,15 +287,15 @@ export function initSocialSystem(
   }
 
   function scheduleNext() {
-    const delay = 20_000 + Math.random() * 10_000; // 20-30 sec
+    const delay = 10_000 + Math.random() * 8_000; // 10-18 sec
     scene.time.delayedCall(delay, () => {
       tryStartConversation();
       scheduleNext();
     });
   }
 
-  // First conversation attempt after 8 seconds (let characters spread out first)
-  scene.time.delayedCall(8_000, () => {
+  // First conversation attempt after 6 seconds
+  scene.time.delayedCall(6_000, () => {
     tryStartConversation();
     scheduleNext();
   });
