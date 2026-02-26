@@ -73,7 +73,7 @@ export default function RPGScene({ characters, onSelectCharacter, onBioCharacter
         preload() {
           // Tiled map + compact tileset (512×512, 254 tiles)
           this.load.tilemapTiledJSON("office-map", "/maps/marketing_office.tmj");
-          this.load.image("tileset-compact", "/maps/tileset_compact.png");
+          this.load.image("tileset_compact", "/maps/tileset_compact.png");
 
           // Character sprites
           preloadCharacters(this);
@@ -87,7 +87,7 @@ export default function RPGScene({ characters, onSelectCharacter, onBioCharacter
 
           // ── Tiled map ──
           const map = this.make.tilemap({ key: "office-map" });
-          const tileset = map.addTilesetImage("tileset_compact", "tileset-compact");
+          const tileset = map.addTilesetImage("tileset_compact", "tileset_compact");
 
           if (!tileset) {
             console.error("Failed to load tileset");

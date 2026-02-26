@@ -144,7 +144,13 @@ export function placeCharacters(
   function deselectAll() {
     if (selectedId) {
       const ref = charRefs.get(selectedId);
-      if (ref && ref.status === "idle" && !ref.isTalking) startWalking(ref);
+      if (ref) {
+        if (ref.status === "idle" && !ref.isTalking) startWalking(ref);
+        // Hide label on deselect (unless has status)
+        if (ref.status === "idle") {
+          scene.tweens.add({ targets: ref.labelContainer, alpha: 0, duration: 200 });
+        }
+      }
       selectedId = null;
     }
     clearMenu();
@@ -218,7 +224,7 @@ export function placeCharacters(
   }
 
   function updateLabelPos(ref: CharRef) {
-    ref.labelContainer.setPosition(ref.sprite.x, ref.sprite.y - 52);
+    ref.labelContainer.setPosition(ref.sprite.x, ref.sprite.y - 48);
   }
 
   /**
@@ -359,30 +365,34 @@ export function placeCharacters(
 
     const info = DISPLAY_INFO[c.id] || { name: c.name, role: c.role };
 
+    const LABEL_FONT = 'Arial, Helvetica, sans-serif';
+
     const roleText = scene.add.text(0, -8, info.role, {
-      fontSize: "18px", fontStyle: "bold", color: "#ffffff",
-      fontFamily: '"Pixelify Sans", sans-serif',
+      fontSize: "13px", fontStyle: "bold", color: "#ffffff",
+      fontFamily: LABEL_FONT,
       stroke: "#000000", strokeThickness: 3,
     }).setOrigin(0.5);
 
-    const nameTextObj = scene.add.text(0, 10, info.name, {
-      fontSize: "15px", color: "#aaaaaa",
-      fontFamily: '"Pixelify Sans", sans-serif',
+    const nameTextObj = scene.add.text(0, 8, info.name, {
+      fontSize: "11px", color: "#cccccc",
+      fontFamily: LABEL_FONT,
       stroke: "#000000", strokeThickness: 3,
     }).setOrigin(0.5);
 
-    const statusText = scene.add.text(0, 26, "", {
-      fontSize: "14px", fontStyle: "bold", color: "#f0c040",
-      fontFamily: '"Pixelify Sans", sans-serif',
+    const statusText = scene.add.text(0, 22, "", {
+      fontSize: "11px", fontStyle: "bold", color: "#f0c040",
+      fontFamily: LABEL_FONT,
       stroke: "#000000", strokeThickness: 2,
     }).setOrigin(0.5);
 
-    const plateW = Math.max(roleText.width, nameTextObj.width) + 20;
-    const plateBg = scene.add.rectangle(0, 2, plateW, 48, 0x000000, 0.6);
+    const plateW = Math.max(roleText.width, nameTextObj.width) + 16;
+    const plateBg = scene.add.rectangle(0, 0, plateW, 40, 0x000000, 0.7)
+      .setOrigin(0.5);
 
-    const labelContainer = scene.add.container(startX, startY - 52, [
+    const labelContainer = scene.add.container(startX, startY - 48, [
       plateBg, roleText, nameTextObj, statusText,
     ]).setDepth(11);
+    labelContainer.setAlpha(0); // hidden by default
 
     const ref: CharRef = {
       sprite, labelContainer, roleText, nameTextObj, statusText,
@@ -393,6 +403,26 @@ export function placeCharacters(
       deskPos,
     };
     charRefs.set(c.id, ref);
+
+    // Show label on hover
+    sprite.on("pointerover", () => {
+      scene.tweens.add({
+        targets: labelContainer,
+        alpha: 1,
+        duration: 150,
+        ease: "Sine.easeOut",
+      });
+    });
+    sprite.on("pointerout", () => {
+      // Keep visible if selected or has status text
+      if (selectedId === c.id || ref.status !== "idle") return;
+      scene.tweens.add({
+        targets: labelContainer,
+        alpha: 0,
+        duration: 200,
+        ease: "Sine.easeIn",
+      });
+    });
 
     sprite.on("pointerdown", () => {
       justClickedUI = true;
@@ -414,6 +444,7 @@ export function placeCharacters(
     ref.status = status;
 
     if (status === "working") {
+      ref.labelContainer.setAlpha(1); // show label with status
       runToDesk(ref);
     } else if (status === "done") {
       fullStop(ref);
@@ -421,11 +452,16 @@ export function placeCharacters(
       seatAtDesk(ref);
       ref.statusText.setText("Done \u2713");
       ref.statusText.setColor("#4ecb4e");
+      ref.labelContainer.setAlpha(1); // show label with status
       scene.time.delayedCall(3000, () => {
         if (ref.status === "done") setCharStatus(charId, "idle");
       });
     } else {
       ref.statusText.setText("");
+      // Fade out label when returning to idle (unless hovered/selected)
+      if (selectedId !== charId) {
+        scene.tweens.add({ targets: ref.labelContainer, alpha: 0, duration: 300 });
+      }
       if (selectedId !== charId && !ref.isTalking) startWalking(ref);
     }
 
