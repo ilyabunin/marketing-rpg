@@ -88,11 +88,15 @@ export function preloadSpeechBubbles(scene: Phaser.Scene) {
   ANSWER_NAMES.forEach((k) => scene.load.image(k, ANSWER_PATHS[k]));
 }
 
+export interface SocialSystemAPI {
+  triggerConversation: (askerId: string, answererId: string) => void;
+}
+
 /** Call in Phaser create() after placeCharacters */
 export function initSocialSystem(
   scene: Phaser.Scene,
   api: CharacterSystemAPI
-) {
+): SocialSystemAPI {
   let lastConvTime = 0;
   let convThisMinute = 0;
   let minuteStart = scene.time.now;
@@ -159,16 +163,19 @@ export function initSocialSystem(
     }
   }
 
-  // ─── 1-on-1 conversation ──────────────────────────────────
+  // ─── 1-on-1 conversation (auto-scheduled) ────────────────
 
-  async function startConversation() {
+  function startConversation() {
     const idle = getIdleChars();
     if (idle.length < 2) return;
 
     const shuffled = [...idle].sort(() => Math.random() - 0.5);
-    const asker = shuffled[0];
-    const answerer = shuffled[1];
+    runConversation(shuffled[0], shuffled[1]);
+  }
 
+  // ─── User-triggered conversation between two specific characters ──
+
+  async function runConversation(asker: CharRef, answerer: CharRef) {
     activeConversation = true;
     currentPair = [asker, answerer];
 
@@ -177,34 +184,30 @@ export function initSocialSystem(
     api.stopWalking(asker);
     api.stopWalking(answerer);
 
-    // Answerer walks toward asker using pathfinding
+    // Answerer walks toward asker
     const target = {
       x: asker.sprite.x + (Math.random() - 0.5) * 40,
       y: asker.sprite.y + (Math.random() - 0.5) * 40,
     };
 
-    // Walk with timeout (don't wait forever)
     const walkPromise = api.walkToPoint(answerer, target, 55);
     const timeout = new Promise<void>((r) => {
       scene.time.delayedCall(3000, r);
     });
     await Promise.race([walkPromise, timeout]);
 
-    if (!activeConversation) return; // interrupted
+    if (!activeConversation) return;
 
-    // Stop answerer
     answerer.interrupted = true;
     answerer.currentTween?.stop();
     answerer.currentTween = null;
     answerer.sprite.stop();
 
-    // Check distance — abort if too far apart (pathfinding failed)
     const distBetween = Math.sqrt(
       (asker.sprite.x - answerer.sprite.x) ** 2 +
       (asker.sprite.y - answerer.sprite.y) ** 2
     );
     if (distBetween > 120) {
-      // Too far, cancel conversation
       endConversation();
       return;
     }
@@ -216,16 +219,14 @@ export function initSocialSystem(
     api.updateLabelPos(asker);
     api.updateLabelPos(answerer);
 
-    // ── Dialogue: Q→A→Q→A... (1-4 exchanges, always ends with A) ──
-    const exchanges = 1 + Math.floor(Math.random() * 4); // 1-4
-    const totalSteps = exchanges * 2; // Q,A,Q,A...
+    const exchanges = 1 + Math.floor(Math.random() * 4);
+    const totalSteps = exchanges * 2;
 
     for (let step = 0; step < totalSteps; step++) {
       if (!activeConversation) break;
 
       const isQuestion = step % 2 === 0;
       const speaker = isQuestion ? asker : answerer;
-
       if (!speaker.isTalking) break;
 
       const key = isQuestion
@@ -242,7 +243,6 @@ export function initSocialSystem(
         });
       });
 
-      // Pause between bubbles
       if (step < totalSteps - 1) {
         await new Promise<void>((resolve) => {
           scene.time.delayedCall(400 + Math.random() * 600, resolve);
@@ -251,6 +251,15 @@ export function initSocialSystem(
     }
 
     endConversation();
+  }
+
+  function triggerConversation(askerId: string, answererId: string) {
+    if (activeConversation) return;
+    const asker = api.charRefs.get(askerId);
+    const answerer = api.charRefs.get(answererId);
+    if (!asker || !answerer) return;
+    if (asker.status !== "idle" || answerer.status !== "idle") return;
+    runConversation(asker, answerer);
   }
 
   // ─── Scheduler ─────────────────────────────────────────────
@@ -283,4 +292,6 @@ export function initSocialSystem(
     tryStartConversation();
     scheduleNext();
   });
+
+  return { triggerConversation };
 }

@@ -131,7 +131,8 @@ export default function RPGScene({ characters, onSelectCharacter, onBioCharacter
           );
 
           // ── Social system ──
-          initSocialSystem(this, charSystem);
+          const socialSystem = initSocialSystem(this, charSystem);
+          charSystem.setSocialTrigger(socialSystem.triggerConversation);
         }
 
         update() {

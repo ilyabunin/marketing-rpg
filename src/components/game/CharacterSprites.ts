@@ -51,6 +51,7 @@ export interface CharacterSystemAPI {
   updateLabelPos: (ref: CharRef) => void;
   pathfinding: PathfindingAPI;
   walkToPoint: (ref: CharRef, target: PathPoint, speed?: number, run?: boolean) => Promise<void>;
+  setSocialTrigger: (fn: (askerId: string, answererId: string) => void) => void;
 }
 
 const SPRITE_MAP: Record<string, string> = {
@@ -133,6 +134,7 @@ export function placeCharacters(
   let menuContainer: Phaser.GameObjects.Container | null = null;
   let glowGfx: Phaser.GameObjects.Graphics | null = null;
   let justClickedUI = false;
+  let triggerConvFn: ((askerId: string, answererId: string) => void) | null = null;
 
   function clearMenu() {
     menuContainer?.destroy();
@@ -340,9 +342,23 @@ export function placeCharacters(
     }
   }
 
-  // ─── Background click ────────────────────────────────────────
+  // ─── Background click / Right-click walk ─────────────────────
 
-  scene.input.on("pointerdown", () => {
+  // Disable browser context menu on canvas
+  scene.game.canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+
+  scene.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+    // Right-click: command selected character to walk
+    if (pointer.button === 2 && selectedId) {
+      const ref = charRefs.get(selectedId);
+      if (ref && ref.status === "idle" && !ref.isTalking) {
+        justClickedUI = true; // prevent deselect
+        fullStop(ref);
+        walkToPoint(ref, { x: pointer.worldX, y: pointer.worldY }, ref.walkSpeed);
+      }
+      return;
+    }
+    // Left-click on empty: deselect
     if (!justClickedUI && selectedId) deselectAll();
     justClickedUI = false;
   });
@@ -426,6 +442,15 @@ export function placeCharacters(
 
     sprite.on("pointerdown", () => {
       justClickedUI = true;
+
+      // If another character is already selected → trigger conversation
+      if (selectedId && selectedId !== c.id && triggerConvFn) {
+        const prevId = selectedId;
+        deselectAll();
+        triggerConvFn(prevId, c.id);
+        return;
+      }
+
       if (selectedId === c.id) return;
       deselectAll();
       selectedId = c.id;
@@ -481,7 +506,11 @@ export function placeCharacters(
   scene.events.on("shutdown", () => window.removeEventListener("character-status", handleStatusEvent));
   scene.events.on("destroy", () => window.removeEventListener("character-status", handleStatusEvent));
 
-  return { charRefs, stopWalking, startWalking, updateLabelPos, pathfinding, walkToPoint };
+  function setSocialTrigger(fn: (askerId: string, answererId: string) => void) {
+    triggerConvFn = fn;
+  }
+
+  return { charRefs, stopWalking, startWalking, updateLabelPos, pathfinding, walkToPoint, setSocialTrigger };
 }
 
 export { WP_MAP };
