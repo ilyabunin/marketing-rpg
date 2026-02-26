@@ -344,21 +344,28 @@ export function placeCharacters(
 
   // ─── Background click / Right-click walk ─────────────────────
 
-  // Disable browser context menu on canvas
-  scene.game.canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+  const canvas = scene.game.canvas;
 
-  scene.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
-    // Right-click: command selected character to walk
-    if (pointer.button === 2 && selectedId) {
-      const ref = charRefs.get(selectedId);
-      if (ref && ref.status === "idle" && !ref.isTalking) {
-        justClickedUI = true; // prevent deselect
-        fullStop(ref);
-        walkToPoint(ref, { x: pointer.worldX, y: pointer.worldY }, ref.walkSpeed);
-      }
-      return;
-    }
-    // Left-click on empty: deselect
+  // Right-click on canvas: walk selected character to point (raw DOM event)
+  canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+  canvas.addEventListener("mousedown", (e: MouseEvent) => {
+    if (e.button !== 2 || !selectedId) return; // only right-click
+    const ref = charRefs.get(selectedId);
+    if (!ref || ref.status !== "idle" || ref.isTalking) return;
+
+    // Convert DOM coords → Phaser world coords
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = scene.cameras.main.width / rect.width;
+    const scaleY = scene.cameras.main.height / rect.height;
+    const worldX = (e.clientX - rect.left) * scaleX + scene.cameras.main.scrollX;
+    const worldY = (e.clientY - rect.top) * scaleY + scene.cameras.main.scrollY;
+
+    fullStop(ref);
+    walkToPoint(ref, { x: worldX, y: worldY }, ref.walkSpeed);
+  });
+
+  // Left-click on empty: deselect
+  scene.input.on("pointerdown", () => {
     if (!justClickedUI && selectedId) deselectAll();
     justClickedUI = false;
   });
