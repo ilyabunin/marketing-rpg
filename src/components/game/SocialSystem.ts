@@ -1,16 +1,11 @@
 /**
  * SocialSystem.ts — 1-on-1 character conversations with speech bubbles
  *
- * Characters periodically form PAIRS and show pixel speech-bubble
- * images above their heads. Dialogue always starts with a QUESTION
- * bubble, then alternates ANSWER → QUESTION → ANSWER...
+ * Dialogue always starts with a QUESTION, always ends with an ANSWER.
+ * Pattern: Q → A (1 exchange), Q → A → Q → A (2 exchanges), etc.
+ * 1–4 exchanges per conversation.
  *
- * Rules:
- * - Only 1-on-1 (exactly 2 characters)
- * - 1–4 exchanges per conversation (question + answer = 1 exchange)
- * - Max 5 conversations per minute, 10 sec cooldown
- * - Only idle characters participate
- * - One character walks toward the other
+ * Uses pathfinding for conversation meeting points.
  */
 
 import type { CharRef, CharacterSystemAPI } from "./CharacterSprites";
@@ -79,10 +74,9 @@ const ANSWER_PATHS: Record<string, string> = {
   "a-28": "/sprites/talks/pixel-speech-bubble-28.png",
 };
 
-const CONVERSATION_COOLDOWN = 10_000; // 10 seconds
+const CONVERSATION_COOLDOWN = 10_000;
 const MAX_PER_MINUTE = 5;
-const BUBBLE_SCALE = 0.4; // 20% smaller than 0.5
-const APPROACH_TIME = 2500;
+const BUBBLE_SCALE = 0.4;
 
 const FACE_FRAMES: Record<string, number> = {
   down: 0, left: 4, right: 8, up: 12,
@@ -90,14 +84,8 @@ const FACE_FRAMES: Record<string, number> = {
 
 /** Call in Phaser preload() */
 export function preloadSpeechBubbles(scene: Phaser.Scene) {
-  // Questions
-  QUESTION_NAMES.forEach((key) => {
-    scene.load.image(key, QUESTION_PATHS[key]);
-  });
-  // Answers
-  ANSWER_NAMES.forEach((key) => {
-    scene.load.image(key, ANSWER_PATHS[key]);
-  });
+  QUESTION_NAMES.forEach((k) => scene.load.image(k, QUESTION_PATHS[k]));
+  ANSWER_NAMES.forEach((k) => scene.load.image(k, ANSWER_PATHS[k]));
 }
 
 /** Call in Phaser create() after placeCharacters */
@@ -110,8 +98,6 @@ export function initSocialSystem(
   let minuteStart = scene.time.now;
   let activeConversation = false;
   let currentPair: [CharRef, CharRef] | null = null;
-
-  // ─── Helpers ───────────────────────────────────────────────
 
   function getIdleChars(): CharRef[] {
     return Array.from(api.charRefs.values()).filter(
@@ -128,30 +114,23 @@ export function initSocialSystem(
     return dy > 0 ? "down" : "up";
   }
 
-  // ─── Speech bubble show/hide ───────────────────────────────
+  // ─── Speech bubble ─────────────────────────────────────────
 
   function showBubble(
     char: CharRef,
     textureKey: string
   ): Phaser.GameObjects.Image | null {
     if (!scene.textures.exists(textureKey)) return null;
-
-    const bubble = scene.add.image(
-      char.sprite.x,
-      char.sprite.y - 60,
-      textureKey
-    );
+    const bubble = scene.add.image(char.sprite.x, char.sprite.y - 60, textureKey);
     bubble.setScale(0);
     bubble.setOrigin(0.5, 1);
-    bubble.setDepth(8);
-
+    bubble.setDepth(10);
     scene.tweens.add({
       targets: bubble,
       scale: BUBBLE_SCALE,
       duration: 200,
       ease: "Back.easeOut",
     });
-
     return bubble;
   }
 
@@ -171,7 +150,6 @@ export function initSocialSystem(
     activeConversation = false;
     lastConvTime = scene.time.now;
     convThisMinute++;
-
     if (currentPair) {
       currentPair.forEach((p) => {
         p.isTalking = false;
@@ -181,16 +159,15 @@ export function initSocialSystem(
     }
   }
 
-  // ─── 1-on-1 Conversation ──────────────────────────────────
+  // ─── 1-on-1 conversation ──────────────────────────────────
 
-  function startConversation() {
+  async function startConversation() {
     const idle = getIdleChars();
     if (idle.length < 2) return;
 
-    // Pick 2 random idle characters
     const shuffled = [...idle].sort(() => Math.random() - 0.5);
-    const asker = shuffled[0]; // asks questions (stays put)
-    const answerer = shuffled[1]; // answers (walks toward asker)
+    const asker = shuffled[0];
+    const answerer = shuffled[1];
 
     activeConversation = true;
     currentPair = [asker, answerer];
@@ -200,120 +177,79 @@ export function initSocialSystem(
     api.stopWalking(asker);
     api.stopWalking(answerer);
 
-    // Answerer walks toward asker
-    const dx = asker.sprite.x - answerer.sprite.x;
-    const dy = asker.sprite.y - answerer.sprite.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
+    // Answerer walks toward asker using pathfinding
+    const target = {
+      x: asker.sprite.x + (Math.random() - 0.5) * 40,
+      y: asker.sprite.y + (Math.random() - 0.5) * 40,
+    };
 
-    let targetX = answerer.sprite.x;
-    let targetY = answerer.sprite.y;
-    if (dist > 40) {
-      const ratio = (dist - 35) / dist;
-      targetX = answerer.sprite.x + dx * ratio;
-      targetY = answerer.sprite.y + dy * ratio;
-    }
-    targetX = Math.max(48, Math.min(1200, targetX));
-    targetY = Math.max(48, Math.min(816, targetY));
+    // Walk with timeout (don't wait forever)
+    const walkPromise = api.walkToPoint(answerer, target, 55);
+    const timeout = new Promise<void>((r) => {
+      scene.time.delayedCall(3000, r);
+    });
+    await Promise.race([walkPromise, timeout]);
 
-    const moveDist = Math.sqrt(
-      (targetX - answerer.sprite.x) ** 2 +
-      (targetY - answerer.sprite.y) ** 2
-    );
+    if (!activeConversation) return; // interrupted
 
-    if (moveDist > 5) {
-      const dir = getDirection(
-        targetX - answerer.sprite.x,
-        targetY - answerer.sprite.y
-      );
-      answerer.sprite.play(`${answerer.spriteName}-walk-${dir}`);
+    // Stop answerer, face each other
+    answerer.interrupted = true;
+    answerer.currentTween?.stop();
+    answerer.currentTween = null;
+    answerer.sprite.stop();
 
-      answerer.currentTween = scene.tweens.add({
-        targets: answerer.sprite,
-        x: targetX,
-        y: targetY,
-        duration: Math.min((moveDist / 55) * 1000, APPROACH_TIME),
-        ease: "Linear",
-        onUpdate: () => api.updateLabelPos(answerer),
-        onComplete: () => {
-          answerer.currentTween = null;
-          answerer.sprite.stop();
-          api.updateLabelPos(answerer);
-        },
-      });
-    }
+    const fdx = asker.sprite.x - answerer.sprite.x;
+    const fdy = asker.sprite.y - answerer.sprite.y;
+    asker.sprite.setFrame(FACE_FRAMES[getDirection(-fdx, -fdy)] ?? 0);
+    answerer.sprite.setFrame(FACE_FRAMES[getDirection(fdx, fdy)] ?? 0);
+    api.updateLabelPos(asker);
+    api.updateLabelPos(answerer);
 
-    // ── Phase 2: Dialogue after approach ──
+    // ── Dialogue: Q→A→Q→A... (1-4 exchanges, always ends with A) ──
+    const exchanges = 1 + Math.floor(Math.random() * 4); // 1-4
+    const totalSteps = exchanges * 2; // Q,A,Q,A...
 
-    scene.time.delayedCall(APPROACH_TIME, () => {
-      if (!activeConversation) return;
+    for (let step = 0; step < totalSteps; step++) {
+      if (!activeConversation) break;
 
-      // Stop walking, face each other
-      if (answerer.currentTween) {
-        answerer.currentTween.stop();
-        answerer.currentTween = null;
-        answerer.sprite.stop();
-      }
+      const isQuestion = step % 2 === 0;
+      const speaker = isQuestion ? asker : answerer;
 
-      const fdx = asker.sprite.x - answerer.sprite.x;
-      const fdy = asker.sprite.y - answerer.sprite.y;
-      asker.sprite.setFrame(FACE_FRAMES[getDirection(-fdx, -fdy)] ?? 0);
-      answerer.sprite.setFrame(FACE_FRAMES[getDirection(fdx, fdy)] ?? 0);
-      api.updateLabelPos(asker);
-      api.updateLabelPos(answerer);
+      if (!speaker.isTalking) break;
 
-      // 1–4 exchanges (question + answer = 1 exchange)
-      const exchanges = 1 + Math.floor(Math.random() * 4);
-      let step = 0; // 0 = question, 1 = answer, 2 = question, ...
-      const totalSteps = exchanges * 2;
+      const key = isQuestion
+        ? pickRandom(QUESTION_NAMES)
+        : pickRandom(ANSWER_NAMES);
 
-      function showNextStep() {
-        if (step >= totalSteps || !activeConversation) {
-          endConversation();
-          return;
-        }
+      const bubble = showBubble(speaker, key);
+      const displayTime = 1200 + Math.random() * 800;
 
-        const isQuestion = step % 2 === 0;
-        const speaker = isQuestion ? asker : answerer;
-
-        if (!speaker.isTalking) {
-          endConversation();
-          return;
-        }
-
-        const key = isQuestion
-          ? pickRandom(QUESTION_NAMES)
-          : pickRandom(ANSWER_NAMES);
-
-        const bubble = showBubble(speaker, key);
-        const displayTime = 1200 + Math.random() * 800;
-
+      await new Promise<void>((resolve) => {
         scene.time.delayedCall(displayTime, () => {
           if (bubble) hideBubble(bubble);
-          step++;
-          const pause = 400 + Math.random() * 600;
-          scene.time.delayedCall(pause, showNextStep);
+          resolve();
+        });
+      });
+
+      // Pause between bubbles
+      if (step < totalSteps - 1) {
+        await new Promise<void>((resolve) => {
+          scene.time.delayedCall(400 + Math.random() * 600, resolve);
         });
       }
+    }
 
-      scene.time.delayedCall(200, showNextStep);
-    });
-
-    // Safety timeout
-    scene.time.delayedCall(14_000, () => {
-      if (activeConversation) endConversation();
-    });
+    endConversation();
   }
 
   // ─── Scheduler ─────────────────────────────────────────────
 
   function tryStartConversation() {
     const now = scene.time.now;
-
     if (now - minuteStart > 60_000) {
       convThisMinute = 0;
       minuteStart = now;
     }
-
     if (activeConversation) return;
     if (convThisMinute >= MAX_PER_MINUTE) return;
     if (now - lastConvTime < CONVERSATION_COOLDOWN) return;
@@ -325,14 +261,13 @@ export function initSocialSystem(
   }
 
   function scheduleNext() {
-    const delay = 10_000 + Math.random() * 8_000; // 10-18 sec
+    const delay = 10_000 + Math.random() * 8_000;
     scene.time.delayedCall(delay, () => {
       tryStartConversation();
       scheduleNext();
     });
   }
 
-  // First conversation attempt after 6 seconds
   scene.time.delayedCall(6_000, () => {
     tryStartConversation();
     scheduleNext();

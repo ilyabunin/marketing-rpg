@@ -1,11 +1,14 @@
-import { WORK_ZONES } from "./FurnitureBuilder";
+/**
+ * CharacterSprites.ts — Character placement, walking AI, status system
+ *
+ * Characters use EasyStar pathfinding to navigate the Tiled map,
+ * walking tile-by-tile along computed paths.
+ */
+
+import type { PathfindingAPI, PathPoint } from "./Pathfinding";
 
 const SPRITE_SCALE = 1.2;
-const ZONE_HALF = 125; // home zone ±125px from desk center
-const MIN_CHAR_DISTANCE = 40;
-const CANVAS_W = 1248;
-const CANVAS_H = 832;
-const WALL = 48; // wall thickness + margin
+const TILE = 32;
 
 interface CharacterData {
   id: string;
@@ -37,6 +40,8 @@ export interface CharRef {
   walkTimer: Phaser.Time.TimerEvent | null;
   status: CharStatus;
   isTalking: boolean;
+  interrupted: boolean;
+  deskPos: PathPoint;
 }
 
 export interface CharacterSystemAPI {
@@ -44,6 +49,8 @@ export interface CharacterSystemAPI {
   stopWalking: (ref: CharRef) => void;
   startWalking: (ref: CharRef) => void;
   updateLabelPos: (ref: CharRef) => void;
+  pathfinding: PathfindingAPI;
+  walkToPoint: (ref: CharRef, target: PathPoint, speed?: number, run?: boolean) => Promise<void>;
 }
 
 const SPRITE_MAP: Record<string, string> = {
@@ -54,7 +61,6 @@ const SPRITE_MAP: Record<string, string> = {
   "project-manager": "Molly",
 };
 
-// English display names and roles
 const DISPLAY_INFO: Record<string, { name: string; role: string }> = {
   "seo-analyst": { name: "Adam", role: "SEO Analyst" },
   "creative-director": { name: "Alex", role: "Creative Director" },
@@ -63,17 +69,15 @@ const DISPLAY_INFO: Record<string, { name: string; role: string }> = {
   "project-manager": { name: "Molly", role: "Project Manager" },
 };
 
-// Common areas characters can wander to (center room, coffee, whiteboard)
-const COMMON_AREAS = [
-  { x: 624, y: 420 },  // Room center
-  { x: 624, y: 110 },  // Near whiteboard
-  { x: 100, y: 776 },  // Coffee machine area
-  { x: 400, y: 400 },  // Center-left open space
-  { x: 850, y: 400 },  // Center-right open space
-  { x: 624, y: 600 },  // Lower center
-];
+// wp layer → character id
+const WP_MAP: Record<string, string> = {
+  wp1: "seo-analyst",
+  wp2: "senior-copywriter",
+  wp3: "ua-strategist",
+  wp4: "creative-director",
+  wp5: "project-manager",
+};
 
-// Spritesheet: 4 cols × 4 rows (32×48 per frame)
 const DIR_FRAMES: Record<string, { start: number; end: number }> = {
   down: { start: 0, end: 3 },
   left: { start: 4, end: 7 },
@@ -84,35 +88,8 @@ const DIR_FRAMES: Record<string, { start: number; end: number }> = {
 type Direction = "down" | "left" | "right" | "up";
 
 function getDirection(dx: number, dy: number): Direction {
-  if (Math.abs(dx) > Math.abs(dy)) {
-    return dx > 0 ? "right" : "left";
-  }
+  if (Math.abs(dx) > Math.abs(dy)) return dx > 0 ? "right" : "left";
   return dy > 0 ? "down" : "up";
-}
-
-function clampToRoom(x: number, y: number): { x: number; y: number } {
-  return {
-    x: Math.max(WALL, Math.min(CANVAS_W - WALL, x)),
-    y: Math.max(WALL, Math.min(CANVAS_H - 16, y)),
-  };
-}
-
-// Check if a point is too close to any character (except excludeId)
-function isTooClose(
-  x: number,
-  y: number,
-  excludeId: string,
-  charRefs: Map<string, CharRef>,
-  minDist = MIN_CHAR_DISTANCE
-): boolean {
-  let tooClose = false;
-  charRefs.forEach((ref, id) => {
-    if (tooClose || id === excludeId) return;
-    const dx = ref.sprite.x - x;
-    const dy = ref.sprite.y - y;
-    if (Math.sqrt(dx * dx + dy * dy) < minDist) tooClose = true;
-  });
-  return tooClose;
 }
 
 export function preloadCharacters(scene: Phaser.Scene) {
@@ -127,14 +104,12 @@ export function preloadCharacters(scene: Phaser.Scene) {
 export function createCharacterAnimations(scene: Phaser.Scene) {
   Object.values(SPRITE_MAP).forEach((name) => {
     for (const [dir, frames] of Object.entries(DIR_FRAMES)) {
-      // Normal walk (6 fps)
       scene.anims.create({
         key: `${name}-walk-${dir}`,
         frames: scene.anims.generateFrameNumbers(name, frames),
         frameRate: 6,
         repeat: -1,
       });
-      // Fast run (12 fps)
       scene.anims.create({
         key: `${name}-run-${dir}`,
         frames: scene.anims.generateFrameNumbers(name, frames),
@@ -149,7 +124,9 @@ export function placeCharacters(
   scene: Phaser.Scene,
   characters: CharacterData[],
   onClick: (c: CharacterData) => void,
-  onBio?: (c: CharacterData) => void
+  onBio: ((c: CharacterData) => void) | undefined,
+  pathfinding: PathfindingAPI,
+  deskPositions: Record<string, PathPoint>
 ): CharacterSystemAPI {
   const charRefs = new Map<string, CharRef>();
   let selectedId: string | null = null;
@@ -183,10 +160,10 @@ export function placeCharacters(
     const hw = 16 * SPRITE_SCALE;
     const hh = 24 * SPRITE_SCALE;
     glowGfx.strokeRect(sx - hw, sy - hh, hw * 2, hh * 2);
-    glowGfx.setDepth(5);
+    glowGfx.setDepth(15);
 
     menuContainer = scene.add.container(sx, sy - 60);
-    menuContainer.setDepth(10);
+    menuContainer.setDepth(15);
 
     const bg = scene.add.rectangle(0, 0, 130, 36, 0x1a1a2e, 0.95);
     bg.setStrokeStyle(2, 0xc8a84e);
@@ -195,21 +172,17 @@ export function placeCharacters(
 
     const bioBtn = scene.add
       .text(-32, 0, "Bio", {
-        fontSize: "15px",
-        color: "#e0d5c1",
+        fontSize: "15px", color: "#e0d5c1",
         fontFamily: '"Pixelify Sans", sans-serif',
       })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
+      .setOrigin(0.5).setInteractive({ useHandCursor: true });
 
     const chatBtn = scene.add
       .text(32, 0, "Chat", {
-        fontSize: "15px",
-        color: "#e0d5c1",
+        fontSize: "15px", color: "#e0d5c1",
         fontFamily: '"Pixelify Sans", sans-serif',
       })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
+      .setOrigin(0.5).setInteractive({ useHandCursor: true });
 
     bioBtn.on("pointerover", () => bioBtn.setColor("#f0c040"));
     bioBtn.on("pointerout", () => bioBtn.setColor("#e0d5c1"));
@@ -217,25 +190,20 @@ export function placeCharacters(
     chatBtn.on("pointerout", () => chatBtn.setColor("#e0d5c1"));
 
     bioBtn.on("pointerdown", () => {
-      justClickedUI = true;
-      clearMenu();
-      selectedId = null;
+      justClickedUI = true; clearMenu(); selectedId = null;
       if (onBio) onBio(ref.data);
     });
-
     chatBtn.on("pointerdown", () => {
-      justClickedUI = true;
-      clearMenu();
-      selectedId = null;
+      justClickedUI = true; clearMenu(); selectedId = null;
       onClick(ref.data);
     });
-
     menuContainer.add([bg, bioBtn, chatBtn]);
   }
 
-  // ─── Walking AI ──────────────────────────────────────────────
+  // ─── Core movement ───────────────────────────────────────────
 
   function fullStop(ref: CharRef) {
+    ref.interrupted = true;
     ref.currentTween?.stop();
     ref.currentTween = null;
     ref.walkTimer?.remove();
@@ -254,234 +222,175 @@ export function placeCharacters(
   }
 
   /**
-   * Pick a walk target with zone-based probabilities:
-   * 50% home zone, 30% common area, 20% near another character.
-   * Collision-checks the target before returning.
+   * Walk along a pathfinding route tile-by-tile.
+   * Resolves when arrived or interrupted.
    */
-  function pickWalkTarget(ref: CharRef): { x: number; y: number } {
-    const zone = WORK_ZONES[ref.data.id];
-    if (!zone) return { x: ref.sprite.x, y: ref.sprite.y };
+  async function walkToPoint(
+    ref: CharRef,
+    target: PathPoint,
+    speed = 60,
+    run = false
+  ): Promise<void> {
+    ref.interrupted = false;
 
-    const roll = Math.random();
-    let tx: number, ty: number;
+    const path = await pathfinding.findPath(
+      ref.sprite.x, ref.sprite.y, target.x, target.y
+    );
 
-    if (roll < 0.5) {
-      // 50% — home zone (~250×250 around desk)
-      tx = zone.cx + (Math.random() - 0.5) * ZONE_HALF * 2;
-      ty = zone.cy + 20 + (Math.random() - 0.5) * ZONE_HALF * 2;
-    } else if (roll < 0.8) {
-      // 30% — common area
-      const area = COMMON_AREAS[Math.floor(Math.random() * COMMON_AREAS.length)];
-      tx = area.x + (Math.random() - 0.5) * 80;
-      ty = area.y + (Math.random() - 0.5) * 80;
-    } else {
-      // 20% — near another idle character
-      const others = Array.from(charRefs.values()).filter(
-        (r) => r.data.id !== ref.data.id && r.status === "idle" && !r.isTalking
-      );
-      if (others.length > 0) {
-        const other = others[Math.floor(Math.random() * others.length)];
-        tx = other.sprite.x + (Math.random() - 0.5) * 80;
-        ty = other.sprite.y + (Math.random() - 0.5) * 80;
-      } else {
-        tx = zone.cx + (Math.random() - 0.5) * ZONE_HALF * 2;
-        ty = zone.cy + 20 + (Math.random() - 0.5) * ZONE_HALF * 2;
-      }
-    }
+    if (!path || path.length === 0) return;
 
-    // Clamp and check collisions — retry up to 3 times
-    let pt = clampToRoom(tx, ty);
-    for (let attempt = 0; attempt < 3; attempt++) {
-      if (!isTooClose(pt.x, pt.y, ref.data.id, charRefs)) return pt;
-      pt = clampToRoom(
-        pt.x + (Math.random() - 0.5) * 80,
-        pt.y + (Math.random() - 0.5) * 80
-      );
-    }
-    return pt; // best effort
-  }
+    for (let i = 0; i < path.length; i++) {
+      if (ref.interrupted) break;
 
-  function startWalking(ref: CharRef) {
-    // Guard: only walk when truly idle
-    if (ref.status !== "idle" || ref.isTalking) return;
-    if (!WORK_ZONES[ref.data.id]) return;
-
-    function walk() {
-      // Re-check every time walk fires
-      if (selectedId === ref.data.id || ref.status !== "idle" || ref.isTalking) return;
-
-      const target = pickWalkTarget(ref);
-      const dx = target.x - ref.sprite.x;
-      const dy = target.y - ref.sprite.y;
+      const pt = path[i];
+      const dx = pt.x - ref.sprite.x;
+      const dy = pt.y - ref.sprite.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-
-      if (dist < 8) {
-        ref.walkTimer = scene.time.delayedCall(2000 + Math.random() * 4000, walk);
-        return;
-      }
+      if (dist < 2) continue;
 
       const dir = getDirection(dx, dy);
-      const duration = (dist / ref.walkSpeed) * 1000;
-      ref.sprite.play(`${ref.spriteName}-walk-${dir}`);
+      const animKey = run
+        ? `${ref.spriteName}-run-${dir}`
+        : `${ref.spriteName}-walk-${dir}`;
+      ref.sprite.play(animKey, true);
 
-      ref.currentTween = scene.tweens.add({
-        targets: ref.sprite,
-        x: target.x,
-        y: target.y,
-        duration,
-        ease: "Linear",
-        onUpdate: () => {
-          // Only update label position — no collision check here
-          // (collision checked at target selection to avoid jitter)
-          updateLabelPos(ref);
-        },
-        onComplete: () => {
-          ref.currentTween = null;
-          ref.sprite.stop();
-          ref.sprite.setFrame(DIR_FRAMES[dir].start);
-          ref.walkTimer = scene.time.delayedCall(2000 + Math.random() * 3000, walk);
-        },
+      const duration = (dist / speed) * 1000;
+
+      await new Promise<void>((resolve) => {
+        ref.currentTween = scene.tweens.add({
+          targets: ref.sprite,
+          x: pt.x,
+          y: pt.y,
+          duration,
+          ease: "Linear",
+          onUpdate: () => updateLabelPos(ref),
+          onComplete: () => {
+            ref.currentTween = null;
+            resolve();
+          },
+        });
       });
     }
 
+    ref.sprite.stop();
+    ref.sprite.setFrame(0);
+    updateLabelPos(ref);
+  }
+
+  // ─── Idle walking AI ─────────────────────────────────────────
+
+  function startWalking(ref: CharRef) {
+    if (ref.status !== "idle" || ref.isTalking) return;
+
+    async function walk() {
+      if (selectedId === ref.data.id || ref.status !== "idle" || ref.isTalking) return;
+
+      const deskTX = Math.floor(ref.deskPos.x / TILE);
+      const deskTY = Math.floor(ref.deskPos.y / TILE);
+      const target = pathfinding.getRandomWalkable(deskTX, deskTY);
+
+      await walkToPoint(ref, target, ref.walkSpeed);
+
+      // Schedule next walk if still idle
+      if (ref.status === "idle" && !ref.isTalking && selectedId !== ref.data.id) {
+        ref.walkTimer = scene.time.delayedCall(2000 + Math.random() * 3000, walk);
+      }
+    }
+
+    ref.interrupted = false;
     ref.walkTimer = scene.time.delayedCall(1000 + Math.random() * 3000, walk);
   }
 
-  // ─── Run to desk (on task assignment) ────────────────────────
+  // ─── Run to desk ─────────────────────────────────────────────
 
   function seatAtDesk(ref: CharRef) {
-    const zone = WORK_ZONES[ref.data.id];
-    if (!zone) return;
-    ref.sprite.setPosition(zone.cx, zone.cy + 20);
+    ref.sprite.setPosition(ref.deskPos.x, ref.deskPos.y);
     ref.sprite.stop();
     ref.sprite.setFrame(DIR_FRAMES["up"].start);
     updateLabelPos(ref);
   }
 
-  function runToDesk(ref: CharRef) {
+  async function runToDesk(ref: CharRef) {
     fullStop(ref);
-    ref.isTalking = false; // interrupt any conversation
+    ref.isTalking = false;
+    ref.interrupted = false;
 
-    const zone = WORK_ZONES[ref.data.id];
-    if (!zone) return;
-
-    const deskX = zone.cx;
-    const deskY = zone.cy + 20;
-    const dx = deskX - ref.sprite.x;
-    const dy = deskY - ref.sprite.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-
-    // Show status immediately
     ref.statusText.setText("Working...");
     ref.statusText.setColor("#f0c040");
 
-    if (dist < 10) {
-      // Already at desk
+    const dx = ref.deskPos.x - ref.sprite.x;
+    const dy = ref.deskPos.y - ref.sprite.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist < 16) {
       seatAtDesk(ref);
       return;
     }
 
-    const dir = getDirection(dx, dy);
-    const speed = 180; // 3–4× normal walk speed
-    const duration = (dist / speed) * 1000;
+    await walkToPoint(ref, ref.deskPos, 180, true);
 
-    // Play run animation (faster frameRate)
-    ref.sprite.play(`${ref.spriteName}-run-${dir}`);
-
-    ref.currentTween = scene.tweens.add({
-      targets: ref.sprite,
-      x: deskX,
-      y: deskY,
-      duration,
-      ease: "Linear",
-      onUpdate: () => { updateLabelPos(ref); },
-      onComplete: () => {
-        ref.currentTween = null;
-        // Only seat if still working — status may have changed mid-run
-        if (ref.status === "working") {
-          seatAtDesk(ref);
-        }
-      },
-    });
+    if (ref.status === "working") {
+      seatAtDesk(ref);
+    }
   }
 
-  // ─── Background click to deselect ────────────────────────────
+  // ─── Background click ────────────────────────────────────────
 
   scene.input.on("pointerdown", () => {
     if (!justClickedUI && selectedId) deselectAll();
     justClickedUI = false;
   });
 
-  // ─── Place each character ────────────────────────────────────
+  // ─── Place characters ────────────────────────────────────────
 
   characters.forEach((c) => {
     const spriteName = SPRITE_MAP[c.id];
     if (!spriteName) return;
-    const zone = WORK_ZONES[c.id];
-    if (!zone) return;
+    const deskPos = deskPositions[c.id] || { x: 480, y: 320 };
 
-    const startX = zone.cx;
-    const startY = zone.cy + 36;
+    const startX = deskPos.x;
+    const startY = deskPos.y;
 
     const sprite = scene.add.sprite(startX, startY, spriteName);
     sprite.setScale(SPRITE_SCALE);
     sprite.setFrame(0);
     sprite.setInteractive({ useHandCursor: true });
-    sprite.setDepth(2);
+    sprite.setDepth(5); // above furniture, below walls
 
-    // --- English label plate above character ---
     const info = DISPLAY_INFO[c.id] || { name: c.name, role: c.role };
 
     const roleText = scene.add.text(0, -8, info.role, {
-      fontSize: "18px",
-      fontStyle: "bold",
-      color: "#ffffff",
+      fontSize: "18px", fontStyle: "bold", color: "#ffffff",
       fontFamily: '"Pixelify Sans", sans-serif',
-      stroke: "#000000",
-      strokeThickness: 3,
+      stroke: "#000000", strokeThickness: 3,
     }).setOrigin(0.5);
 
     const nameTextObj = scene.add.text(0, 10, info.name, {
-      fontSize: "15px",
-      color: "#aaaaaa",
+      fontSize: "15px", color: "#aaaaaa",
       fontFamily: '"Pixelify Sans", sans-serif',
-      stroke: "#000000",
-      strokeThickness: 3,
+      stroke: "#000000", strokeThickness: 3,
     }).setOrigin(0.5);
 
     const statusText = scene.add.text(0, 26, "", {
-      fontSize: "14px",
-      fontStyle: "bold",
-      color: "#f0c040",
+      fontSize: "14px", fontStyle: "bold", color: "#f0c040",
       fontFamily: '"Pixelify Sans", sans-serif',
-      stroke: "#000000",
-      strokeThickness: 2,
+      stroke: "#000000", strokeThickness: 2,
     }).setOrigin(0.5);
 
-    // Background plate
     const plateW = Math.max(roleText.width, nameTextObj.width) + 20;
     const plateBg = scene.add.rectangle(0, 2, plateW, 48, 0x000000, 0.6);
 
     const labelContainer = scene.add.container(startX, startY - 52, [
-      plateBg,
-      roleText,
-      nameTextObj,
-      statusText,
-    ]).setDepth(3);
+      plateBg, roleText, nameTextObj, statusText,
+    ]).setDepth(11);
 
     const ref: CharRef = {
-      sprite,
-      labelContainer,
-      roleText,
-      nameTextObj,
-      statusText,
-      data: c,
-      spriteName,
-      walkSpeed: 30 + Math.random() * 30,
-      currentTween: null,
-      walkTimer: null,
-      status: "idle",
-      isTalking: false,
+      sprite, labelContainer, roleText, nameTextObj, statusText,
+      data: c, spriteName,
+      walkSpeed: 40 + Math.random() * 30,
+      currentTween: null, walkTimer: null,
+      status: "idle", isTalking: false, interrupted: false,
+      deskPos,
     };
     charRefs.set(c.id, ref);
 
@@ -497,20 +406,18 @@ export function placeCharacters(
     startWalking(ref);
   });
 
-  // ─── Status system via CustomEvents ──────────────────────────
+  // ─── Status system ───────────────────────────────────────────
 
   function setCharStatus(charId: string, status: CharStatus) {
     const ref = charRefs.get(charId);
     if (!ref) return;
-
     ref.status = status;
 
     if (status === "working") {
       runToDesk(ref);
     } else if (status === "done") {
-      // Stop any running tween (e.g. the runToDesk tween still in flight)
       fullStop(ref);
-      // Snap to desk immediately
+      ref.interrupted = false;
       seatAtDesk(ref);
       ref.statusText.setText("Done \u2713");
       ref.statusText.setColor("#4ecb4e");
@@ -518,7 +425,6 @@ export function placeCharacters(
         if (ref.status === "done") setCharStatus(charId, "idle");
       });
     } else {
-      // idle
       ref.statusText.setText("");
       if (selectedId !== charId && !ref.isTalking) startWalking(ref);
     }
@@ -536,13 +442,10 @@ export function placeCharacters(
   }
 
   window.addEventListener("character-status", handleStatusEvent);
-  scene.events.on("shutdown", () => {
-    window.removeEventListener("character-status", handleStatusEvent);
-  });
-  scene.events.on("destroy", () => {
-    window.removeEventListener("character-status", handleStatusEvent);
-  });
+  scene.events.on("shutdown", () => window.removeEventListener("character-status", handleStatusEvent));
+  scene.events.on("destroy", () => window.removeEventListener("character-status", handleStatusEvent));
 
-  // Return API for SocialSystem
-  return { charRefs, stopWalking, startWalking, updateLabelPos };
+  return { charRefs, stopWalking, startWalking, updateLabelPos, pathfinding, walkToPoint };
 }
+
+export { WP_MAP };
