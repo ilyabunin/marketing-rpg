@@ -27,6 +27,8 @@ export interface PathfindingAPI {
   getRandomWalkable: (nearTX?: number, nearTY?: number) => PathPoint;
   /** Random walkable pixel in the centre of the room (for conversations) */
   getConversationPoint: () => PathPoint;
+  /** Snap a pixel position to the nearest walkable tile (pixel coords returned) */
+  snapToWalkable: (px: number, py: number) => PathPoint;
   /** Must be called every frame */
   calculate: () => void;
   /** The raw grid (for debug) */
@@ -95,26 +97,38 @@ export function initPathfinding(
   easystar.enableDiagonals();
   easystar.disableCornerCutting();
 
+  function findNearestWalkable(tileX: number, tileY: number): { x: number; y: number } {
+    let bestX = tileX;
+    let bestY = tileY;
+    let bestDist = Infinity;
+    walkableTiles.forEach((t) => {
+      const d = Math.abs(t.x - tileX) + Math.abs(t.y - tileY);
+      if (d < bestDist) { bestDist = d; bestX = t.x; bestY = t.y; }
+    });
+    return { x: bestX, y: bestY };
+  }
+
   function findPath(
     fx: number, fy: number,
     tx: number, ty: number
   ): Promise<PathPoint[] | null> {
-    const fromTX = Math.max(0, Math.min(w - 1, Math.floor(fx / TILE)));
-    const fromTY = Math.max(0, Math.min(h - 1, Math.floor(fy / TILE)));
+    let fromTX = Math.max(0, Math.min(w - 1, Math.floor(fx / TILE)));
+    let fromTY = Math.max(0, Math.min(h - 1, Math.floor(fy / TILE)));
     let toTX = Math.max(0, Math.min(w - 1, Math.floor(tx / TILE)));
     let toTY = Math.max(0, Math.min(h - 1, Math.floor(ty / TILE)));
 
+    // If source tile is blocked, find nearest walkable
+    if (grid[fromTY] && grid[fromTY][fromTX] === 0) {
+      const nearest = findNearestWalkable(fromTX, fromTY);
+      fromTX = nearest.x;
+      fromTY = nearest.y;
+    }
+
     // If target tile is blocked, find nearest walkable
     if (grid[toTY] && grid[toTY][toTX] === 0) {
-      let bestX = toTX;
-      let bestY = toTY;
-      let bestDist = Infinity;
-      walkableTiles.forEach((t) => {
-        const d = Math.abs(t.x - toTX) + Math.abs(t.y - toTY);
-        if (d < bestDist) { bestDist = d; bestX = t.x; bestY = t.y; }
-      });
-      toTX = bestX;
-      toTY = bestY;
+      const nearest = findNearestWalkable(toTX, toTY);
+      toTX = nearest.x;
+      toTY = nearest.y;
     }
 
     return new Promise((resolve) => {
@@ -155,10 +169,19 @@ export function initPathfinding(
     return { x: t.x * TILE + TILE / 2, y: t.y * TILE + TILE / 2 };
   }
 
+  function snapToWalkable(px: number, py: number): PathPoint {
+    const tx = Math.max(0, Math.min(w - 1, Math.floor(px / TILE)));
+    const ty = Math.max(0, Math.min(h - 1, Math.floor(py / TILE)));
+    if (grid[ty] && grid[ty][tx] === 1) return { x: px, y: py };
+    const nearest = findNearestWalkable(tx, ty);
+    return { x: nearest.x * TILE + TILE / 2, y: nearest.y * TILE + TILE / 2 };
+  }
+
   return {
     findPath,
     getRandomWalkable,
     getConversationPoint,
+    snapToWalkable,
     calculate: () => easystar.calculate(),
     grid,
     walkableTiles,

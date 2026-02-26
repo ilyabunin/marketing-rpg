@@ -42,6 +42,7 @@ export interface CharRef {
   isTalking: boolean;
   interrupted: boolean;
   deskPos: PathPoint;
+  pathFailCount: number;
 }
 
 export interface CharacterSystemAPI {
@@ -235,7 +236,18 @@ export function placeCharacters(
       ref.sprite.x, ref.sprite.y, target.x, target.y
     );
 
-    if (!path || path.length === 0) return;
+    if (!path || path.length === 0) {
+      ref.pathFailCount++;
+      // After 3 consecutive failures, teleport to nearest walkable tile
+      if (ref.pathFailCount >= 3) {
+        const safe = pathfinding.snapToWalkable(ref.sprite.x, ref.sprite.y);
+        ref.sprite.setPosition(safe.x, safe.y);
+        updateLabelPos(ref);
+        ref.pathFailCount = 0;
+      }
+      return;
+    }
+    ref.pathFailCount = 0;
 
     for (let i = 0; i < path.length; i++) {
       if (ref.interrupted) break;
@@ -359,8 +371,10 @@ export function placeCharacters(
     if (!spriteName) return;
     const deskPos = deskPositions[c.id] || { x: 480, y: 320 };
 
-    const startX = deskPos.x;
-    const startY = deskPos.y;
+    // Snap start position to nearest walkable tile
+    const snapped = pathfinding.snapToWalkable(deskPos.x, deskPos.y);
+    const startX = snapped.x;
+    const startY = snapped.y;
 
     const sprite = scene.add.sprite(startX, startY, spriteName);
     sprite.setScale(SPRITE_SCALE);
@@ -405,7 +419,7 @@ export function placeCharacters(
       walkSpeed: 40 + Math.random() * 30,
       currentTween: null, walkTimer: null,
       status: "idle", isTalking: false, interrupted: false,
-      deskPos,
+      deskPos, pathFailCount: 0,
     };
     charRefs.set(c.id, ref);
 
