@@ -76,7 +76,7 @@ const ANSWER_PATHS: Record<string, string> = {
 
 const CONVERSATION_COOLDOWN = 10_000;
 const MAX_PER_MINUTE = 5;
-const BUBBLE_SCALE = 0.4;
+const BUBBLE_SCALE = 0.5;
 
 const FACE_FRAMES: Record<string, number> = {
   down: 0, left: 4, right: 8, up: 12,
@@ -122,13 +122,22 @@ export function initSocialSystem(
 
   function showBubble(
     char: CharRef,
-    textureKey: string
+    textureKey: string,
+    participantIndex = 0,
+    totalParticipants = 1
   ): Phaser.GameObjects.Image | null {
     if (!scene.textures.exists(textureKey)) return null;
-    const bubble = scene.add.image(char.sprite.x, char.sprite.y - 60, textureKey);
+    const bubble = scene.add.image(char.sprite.x, char.sprite.y - 35, textureKey);
     bubble.setScale(0);
     bubble.setOrigin(0.5, 1);
     bubble.setDepth(10);
+
+    // Anti-overlap offset for group conversations
+    if (totalParticipants > 1) {
+      const offsetX = (participantIndex - (totalParticipants - 1) / 2) * 15;
+      bubble.x += offsetX;
+    }
+
     scene.tweens.add({
       targets: bubble,
       scale: BUBBLE_SCALE,
@@ -233,7 +242,8 @@ export function initSocialSystem(
         ? pickRandom(QUESTION_NAMES)
         : pickRandom(ANSWER_NAMES);
 
-      const bubble = showBubble(speaker, key);
+      const speakerIdx = speaker === asker ? 0 : 1;
+      const bubble = showBubble(speaker, key, speakerIdx, 2);
       const displayTime = 1200 + Math.random() * 800;
 
       await new Promise<void>((resolve) => {
