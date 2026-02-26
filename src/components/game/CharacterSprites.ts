@@ -132,15 +132,12 @@ export function placeCharacters(
   const charRefs = new Map<string, CharRef>();
   let selectedId: string | null = null;
   let menuContainer: Phaser.GameObjects.Container | null = null;
-  let glowGfx: Phaser.GameObjects.Graphics | null = null;
   let justClickedUI = false;
   let triggerConvFn: ((askerId: string, answererId: string) => void) | null = null;
 
   function clearMenu() {
     menuContainer?.destroy();
     menuContainer = null;
-    glowGfx?.destroy();
-    glowGfx = null;
   }
 
   function deselectAll() {
@@ -163,15 +160,8 @@ export function placeCharacters(
     const sx = ref.sprite.x;
     const sy = ref.sprite.y;
 
-    glowGfx = scene.add.graphics();
-    glowGfx.lineStyle(2, 0xf0c040, 0.8);
-    const hw = 16 * SPRITE_SCALE;
-    const hh = 24 * SPRITE_SCALE;
-    glowGfx.strokeRect(sx - hw, sy - hh, hw * 2, hh * 2);
-    glowGfx.setDepth(15);
-
     menuContainer = scene.add.container(sx, sy - 60);
-    menuContainer.setDepth(15);
+    menuContainer.setDepth(20);
 
     const bg = scene.add.rectangle(0, 0, 130, 36, 0x1a1a2e, 0.95);
     bg.setStrokeStyle(2, 0xc8a84e);
