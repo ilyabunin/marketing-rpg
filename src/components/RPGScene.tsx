@@ -71,9 +71,9 @@ export default function RPGScene({ characters, onSelectCharacter, onBioCharacter
         }
 
         preload() {
-          // Tiled map + tileset
+          // Tiled map + compact tileset (512×512, 254 tiles)
           this.load.tilemapTiledJSON("office-map", "/maps/marketing_office.tmj");
-          this.load.image("tiles-everything", "/maps/0_Everything.png");
+          this.load.image("tileset-compact", "/maps/tileset_compact.png");
 
           // Character sprites
           preloadCharacters(this);
@@ -87,7 +87,7 @@ export default function RPGScene({ characters, onSelectCharacter, onBioCharacter
 
           // ── Tiled map ──
           const map = this.make.tilemap({ key: "office-map" });
-          const tileset = map.addTilesetImage("0_Everything", "tiles-everything");
+          const tileset = map.addTilesetImage("tileset_compact", "tileset-compact");
 
           if (!tileset) {
             console.error("Failed to load tileset");
@@ -141,9 +141,7 @@ export default function RPGScene({ characters, onSelectCharacter, onBioCharacter
       }
 
       const game = new Phaser.Game({
-        // CANVAS mode required: tileset image is 31344px tall,
-        // exceeds WebGL max texture size (4096-16384px)
-        type: Phaser.CANVAS,
+        type: Phaser.AUTO,
         parent: container,
         width: CANVAS_W,
         height: CANVAS_H,
