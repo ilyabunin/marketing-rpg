@@ -9,7 +9,8 @@
     "seo-analyst",
     "creative-director",
     "senior-copywriter",
-    "ua-strategist"
+    "ua-strategist",
+    "project-manager"
   ],
   "furniture": [
     { "type": "desk", "position": { "x": 2, "y": 2 }, "label": "SEO" },

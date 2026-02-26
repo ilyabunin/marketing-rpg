@@ -1,6 +1,6 @@
 const TILE = 32;
-const COLS = 30; // 960 / 32
-const ROWS = 20; // 640 / 32
+const COLS = 39; // 1248 / 32
+const ROWS = 26; // 832 / 32
 
 const COLORS = {
   floor1: 0xc4a882,
@@ -64,7 +64,7 @@ export function drawWalls(scene: Phaser.Scene) {
   gfx.lineTo((COLS - 1) * TILE, ROWS * TILE);
   gfx.strokePath();
 
-  // Bottom edge open (RPG Maker top-down style) — subtle shadow
+  // Bottom edge open — subtle shadow
   gfx.lineStyle(1, 0x2a1a0a, 0.3);
   gfx.beginPath();
   gfx.moveTo(0, ROWS * TILE - 1);

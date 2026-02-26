@@ -23,8 +23,8 @@ interface Props {
   onBioCharacter?: (character: CharacterData) => void;
 }
 
-const CANVAS_W = 960;
-const CANVAS_H = 640;
+const CANVAS_W = 1248;
+const CANVAS_H = 832;
 
 export default function RPGScene({ characters, onSelectCharacter, onBioCharacter }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);

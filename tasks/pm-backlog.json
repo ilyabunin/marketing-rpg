@@ -1,0 +1,10 @@
+{
+  "id": "pm-backlog",
+  "name": "Забрать идею в бэклог",
+  "description": "Превращает идеи и результаты в структурированные задачи для бэклога",
+  "character": "project-manager",
+  "model_override": null,
+  "prompt_template": "{user_input}",
+  "output_format": "structured",
+  "webhook_action": "pm-asana-backlog"
+}

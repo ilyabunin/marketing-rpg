@@ -48,7 +48,6 @@ export default function ChatPanel({
   const [lastResponse, setLastResponse] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom on new message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
@@ -61,7 +60,6 @@ export default function ChatPanel({
     setLoading(true);
     setLastResponse(null);
 
-    // Tell Phaser scene: character is working
     window.dispatchEvent(
       new CustomEvent("character-status", {
         detail: { id: character.id, status: "working" },
@@ -91,7 +89,6 @@ export default function ChatPanel({
     }
     setLoading(false);
 
-    // Tell Phaser scene: character is done
     window.dispatchEvent(
       new CustomEvent("character-status", {
         detail: { id: character.id, status: "done" },
@@ -119,42 +116,40 @@ export default function ChatPanel({
     <div
       className="flex flex-col h-full"
       style={{
-        width: 380,
-        maxWidth: "100%",
         backgroundColor: "#1a1a2e",
         borderLeft: "2px solid #c8a84e",
       }}
     >
       {/* Header */}
       <div
-        className="flex items-center gap-3 px-4 py-3"
+        className="flex items-center gap-3 px-5 py-3"
         style={{ borderBottom: "1px solid #2a2a4e" }}
       >
-        <CharacterAvatar characterId={character.id} size={40} />
+        <CharacterAvatar characterId={character.id} size={36} />
         <div className="flex-1 min-w-0">
-          <h2 className="font-pixel text-rpg-gold truncate" style={{ fontSize: 14 }}>
+          <h2 className="font-pixel text-rpg-gold truncate" style={{ fontSize: 22 }}>
             {character.name_ru}
           </h2>
-          <p className="font-body text-rpg-text truncate" style={{ fontSize: 12 }}>
+          <p className="font-body truncate" style={{ fontSize: 15, color: "#888888" }}>
             {character.role}
           </p>
         </div>
         <button
           onClick={onClose}
           className="font-pixel text-rpg-text hover:text-rpg-gold transition-colors"
-          style={{ fontSize: 14, padding: "4px 8px" }}
+          style={{ fontSize: 16, padding: "4px 8px" }}
         >
           X
         </button>
       </div>
 
-      {/* Quest selector — compact tag buttons */}
+      {/* Quest selector */}
       <div
-        className="px-4 py-2"
+        className="px-5 py-2"
         style={{ borderBottom: "1px solid #2a2a4e" }}
       >
-        <div className="font-pixel text-rpg-gold mb-2" style={{ fontSize: 10 }}>
-          SELECT QUEST:
+        <div className="font-pixel text-rpg-gold mb-2" style={{ fontSize: 11 }}>
+          QUESTS:
         </div>
         <div className="flex flex-wrap gap-1.5">
           {character.tasks.map((t) => {
@@ -163,12 +158,12 @@ export default function ChatPanel({
               <button
                 key={t.id}
                 onClick={() => setSelectedTask(t.id)}
-                className="font-body transition-colors"
+                className="font-pixel transition-colors"
                 style={{
-                  fontSize: 12,
-                  padding: "3px 8px",
+                  fontSize: 14,
+                  padding: "4px 10px",
                   backgroundColor: isActive ? "#c8a84e" : "#2a2a4e",
-                  color: isActive ? "#1a1a2e" : "#e0d5c1",
+                  color: isActive ? "#1a1a2e" : "#c8a84e",
                   border: `1px solid ${isActive ? "#c8a84e" : "#3a3a5a"}`,
                   cursor: "pointer",
                 }}
@@ -181,20 +176,20 @@ export default function ChatPanel({
       </div>
 
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+      <div className="flex-1 overflow-y-auto px-5 py-3 space-y-3">
         {/* Greeting */}
         <div
-          className="flex gap-2"
+          className="flex gap-3"
           style={{
-            padding: "8px 10px",
+            padding: "10px 12px",
             backgroundColor: "#2a2a4e",
             borderLeft: "3px solid #c8a84e",
           }}
         >
           <div className="flex-shrink-0">
-            <CharacterAvatar characterId={character.id} size={32} />
+            <CharacterAvatar characterId={character.id} size={36} />
           </div>
-          <p className="font-body text-rpg-text whitespace-pre-wrap" style={{ fontSize: 14, lineHeight: 1.5 }}>
+          <p className="font-body text-rpg-text whitespace-pre-wrap" style={{ fontSize: 16, lineHeight: 1.6 }}>
             {character.greeting}
           </p>
         </div>
@@ -202,7 +197,7 @@ export default function ChatPanel({
         {isGuest && (
           <div
             className="font-pixel text-rpg-gold text-center"
-            style={{ fontSize: 10, padding: 8, backgroundColor: "rgba(200,168,78,0.1)" }}
+            style={{ fontSize: 11, padding: 8, backgroundColor: "rgba(200,168,78,0.1)" }}
           >
             Sign in to use AI features
           </div>
@@ -211,21 +206,21 @@ export default function ChatPanel({
         {messages.map((msg, i) => (
           <div
             key={i}
-            className="flex gap-2"
+            className="flex gap-3"
             style={{
-              padding: "8px 10px",
+              padding: "10px 12px",
               backgroundColor: msg.role === "assistant" ? "#2a2a4e" : "#1e3a1e",
               borderLeft: `3px solid ${msg.role === "assistant" ? "#c8a84e" : "#4a8a4a"}`,
             }}
           >
             {msg.role === "assistant" && (
               <div className="flex-shrink-0">
-                <CharacterAvatar characterId={character.id} size={32} />
+                <CharacterAvatar characterId={character.id} size={36} />
               </div>
             )}
             <p
               className="font-body text-rpg-text whitespace-pre-wrap flex-1"
-              style={{ fontSize: 14, lineHeight: 1.5 }}
+              style={{ fontSize: 16, lineHeight: 1.6 }}
             >
               {msg.content}
             </p>
@@ -235,7 +230,7 @@ export default function ChatPanel({
         {loading && (
           <div
             className="font-pixel text-rpg-gold animate-pulse"
-            style={{ fontSize: 11, padding: "8px 10px" }}
+            style={{ fontSize: 12, padding: "8px 12px" }}
           >
             Working...
           </div>
@@ -246,7 +241,7 @@ export default function ChatPanel({
 
       {/* Input */}
       <div
-        className="px-4 py-3 flex gap-2"
+        className="px-5 py-3 flex gap-2"
         style={{ borderTop: "1px solid #2a2a4e" }}
       >
         <input
@@ -263,8 +258,8 @@ export default function ChatPanel({
           disabled={!canSend || loading}
           className="flex-1 font-body text-rpg-text placeholder-gray-600 outline-none disabled:opacity-50"
           style={{
-            fontSize: 14,
-            padding: "8px 10px",
+            fontSize: 16,
+            padding: "10px 12px",
             backgroundColor: "#0f0f23",
             border: "1px solid #2a2a4e",
           }}
@@ -274,35 +269,35 @@ export default function ChatPanel({
           disabled={!canSend || !input.trim() || loading}
           className="font-pixel text-rpg-gold disabled:opacity-30 hover:bg-rpg-gold/10 transition-colors"
           style={{
-            fontSize: 14,
-            padding: "8px 12px",
+            fontSize: 15,
+            padding: "10px 14px",
             backgroundColor: "#2a2a4e",
             border: "1px solid #3a3a5a",
             cursor: canSend ? "pointer" : "default",
           }}
         >
-          →
+          Send
         </button>
       </div>
 
       {/* Webhook button */}
       {lastResponse && (
         <div
-          className="px-4 py-2"
+          className="px-5 py-2"
           style={{ borderTop: "1px solid #2a2a4e" }}
         >
           <button
             onClick={handleWebhook}
             className="w-full font-pixel text-rpg-text hover:text-rpg-gold transition-colors"
             style={{
-              fontSize: 11,
-              padding: "6px",
+              fontSize: 15,
+              padding: "8px",
               backgroundColor: "#2a2a4e",
               border: "1px solid #3a3a5a",
               cursor: "pointer",
             }}
           >
-            📤 Send to Make.com
+            Save Result
           </button>
         </div>
       )}

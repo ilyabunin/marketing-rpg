@@ -1,7 +1,7 @@
 import { WORK_ZONES } from "./FurnitureBuilder";
 
-const SPRITE_SCALE = 1.5;
-const ZONE_HALF = 100; // home zone is ±100px from desk center
+const SPRITE_SCALE = 1.2;
+const ZONE_HALF = 125; // home zone ±125px from desk center (larger room)
 
 interface CharacterData {
   id: string;
@@ -22,7 +22,10 @@ type CharStatus = "idle" | "working" | "done";
 
 interface CharRef {
   sprite: Phaser.GameObjects.Sprite;
-  nameText: Phaser.GameObjects.Text;
+  labelContainer: Phaser.GameObjects.Container;
+  roleText: Phaser.GameObjects.Text;
+  nameTextObj: Phaser.GameObjects.Text;
+  statusText: Phaser.GameObjects.Text;
   data: CharacterData;
   spriteName: string;
   walkSpeed: number;
@@ -36,10 +39,19 @@ const SPRITE_MAP: Record<string, string> = {
   "creative-director": "Alex",
   "senior-copywriter": "Jenny",
   "ua-strategist": "Bob",
+  "project-manager": "Molly",
 };
 
-// Spritesheet layout: 4 cols × 4 rows (32×48 per frame)
-// Row 0 = down, Row 1 = left, Row 2 = right, Row 3 = up
+// English display names and roles
+const DISPLAY_INFO: Record<string, { name: string; role: string }> = {
+  "seo-analyst": { name: "Adam", role: "SEO Analyst" },
+  "creative-director": { name: "Alex", role: "Creative Director" },
+  "senior-copywriter": { name: "Jenny", role: "Senior Copywriter" },
+  "ua-strategist": { name: "Bob", role: "UA Strategist" },
+  "project-manager": { name: "Molly", role: "Project Manager" },
+};
+
+// Spritesheet: 4 cols × 4 rows (32×48 per frame)
 const DIR_FRAMES: Record<string, { start: number; end: number }> = {
   down: { start: 0, end: 3 },
   left: { start: 4, end: 7 },
@@ -90,7 +102,6 @@ export function placeCharacters(
   let glowGfx: Phaser.GameObjects.Graphics | null = null;
   let justClickedUI = false;
 
-  // --- Menu management ---
   function clearMenu() {
     menuContainer?.destroy();
     menuContainer = null;
@@ -112,7 +123,6 @@ export function placeCharacters(
     const sx = ref.sprite.x;
     const sy = ref.sprite.y;
 
-    // Gold glow outline
     glowGfx = scene.add.graphics();
     glowGfx.lineStyle(2, 0xf0c040, 0.8);
     const hw = 16 * SPRITE_SCALE;
@@ -120,20 +130,17 @@ export function placeCharacters(
     glowGfx.strokeRect(sx - hw, sy - hh, hw * 2, hh * 2);
     glowGfx.setDepth(5);
 
-    // Menu container above character
-    menuContainer = scene.add.container(sx, sy - 56);
+    menuContainer = scene.add.container(sx, sy - 60);
     menuContainer.setDepth(10);
 
     const bg = scene.add.rectangle(0, 0, 130, 36, 0x1a1a2e, 0.95);
     bg.setStrokeStyle(2, 0xc8a84e);
     bg.setInteractive();
-    bg.on("pointerdown", () => {
-      justClickedUI = true;
-    });
+    bg.on("pointerdown", () => { justClickedUI = true; });
 
     const bioBtn = scene.add
-      .text(-32, 0, "📋 Bio", {
-        fontSize: "12px",
+      .text(-32, 0, "Bio", {
+        fontSize: "13px",
         color: "#e0d5c1",
         fontFamily: '"Pixelify Sans", sans-serif',
       })
@@ -141,8 +148,8 @@ export function placeCharacters(
       .setInteractive({ useHandCursor: true });
 
     const chatBtn = scene.add
-      .text(32, 0, "💬 Chat", {
-        fontSize: "12px",
+      .text(32, 0, "Chat", {
+        fontSize: "13px",
         color: "#e0d5c1",
         fontFamily: '"Pixelify Sans", sans-serif',
       })
@@ -156,18 +163,16 @@ export function placeCharacters(
 
     bioBtn.on("pointerdown", () => {
       justClickedUI = true;
-      const data = ref.data;
       clearMenu();
       selectedId = null;
-      if (onBio) onBio(data);
+      if (onBio) onBio(ref.data);
     });
 
     chatBtn.on("pointerdown", () => {
       justClickedUI = true;
-      const data = ref.data;
       clearMenu();
       selectedId = null;
-      onClick(data);
+      onClick(ref.data);
     });
 
     menuContainer.add([bg, bioBtn, chatBtn]);
@@ -180,12 +185,16 @@ export function placeCharacters(
     ref.walkTimer?.remove();
     ref.walkTimer = null;
     ref.sprite.stop();
-    ref.sprite.setFrame(0); // face down
-    ref.nameText.setPosition(ref.sprite.x, ref.sprite.y - 44);
+    ref.sprite.setFrame(0);
+    updateLabelPos(ref);
+  }
+
+  function updateLabelPos(ref: CharRef) {
+    ref.labelContainer.setPosition(ref.sprite.x, ref.sprite.y - 52);
   }
 
   function startWalking(ref: CharRef) {
-    if (ref.status === "working") return; // Don't walk while working
+    if (ref.status === "working") return;
     const zone = WORK_ZONES[ref.data.id];
     if (!zone) return;
 
@@ -194,18 +203,15 @@ export function placeCharacters(
 
       const tx = zone.cx + (Math.random() - 0.5) * ZONE_HALF * 2;
       const ty = zone.cy + 20 + (Math.random() - 0.5) * ZONE_HALF * 2;
-      const targetX = Math.max(48, Math.min(912, tx));
-      const targetY = Math.max(48, Math.min(624, ty));
+      const targetX = Math.max(48, Math.min(1200, tx));
+      const targetY = Math.max(48, Math.min(816, ty));
 
       const dx = targetX - ref.sprite.x;
       const dy = targetY - ref.sprite.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
 
       if (dist < 8) {
-        ref.walkTimer = scene.time.delayedCall(
-          2000 + Math.random() * 4000,
-          walk
-        );
+        ref.walkTimer = scene.time.delayedCall(2000 + Math.random() * 4000, walk);
         return;
       }
 
@@ -219,32 +225,22 @@ export function placeCharacters(
         y: targetY,
         duration,
         ease: "Linear",
-        onUpdate: () => {
-          ref.nameText.setPosition(ref.sprite.x, ref.sprite.y - 44);
-        },
+        onUpdate: () => { updateLabelPos(ref); },
         onComplete: () => {
           ref.currentTween = null;
           ref.sprite.stop();
           ref.sprite.setFrame(DIR_FRAMES[dir].start);
-          ref.walkTimer = scene.time.delayedCall(
-            2000 + Math.random() * 2000,
-            walk
-          );
+          ref.walkTimer = scene.time.delayedCall(2000 + Math.random() * 2000, walk);
         },
       });
     }
 
-    ref.walkTimer = scene.time.delayedCall(
-      1000 + Math.random() * 3000,
-      walk
-    );
+    ref.walkTimer = scene.time.delayedCall(1000 + Math.random() * 3000, walk);
   }
 
   // --- Background click to deselect ---
   scene.input.on("pointerdown", () => {
-    if (!justClickedUI && selectedId) {
-      deselectAll();
-    }
+    if (!justClickedUI && selectedId) deselectAll();
     justClickedUI = false;
   });
 
@@ -252,11 +248,9 @@ export function placeCharacters(
   characters.forEach((c) => {
     const spriteName = SPRITE_MAP[c.id];
     if (!spriteName) return;
-
     const zone = WORK_ZONES[c.id];
     if (!zone) return;
 
-    // Start near chair (below desk center)
     const startX = zone.cx;
     const startY = zone.cy + 36;
 
@@ -266,21 +260,52 @@ export function placeCharacters(
     sprite.setInteractive({ useHandCursor: true });
     sprite.setDepth(2);
 
-    const nameText = scene.add
-      .text(startX, startY - 44, c.name_ru, {
-        fontSize: "11px",
-        color: "#e0d5c1",
-        fontFamily: '"Pixelify Sans", sans-serif',
-        stroke: "#0f0f23",
-        strokeThickness: 3,
-        padding: { x: 4, y: 2 },
-      })
-      .setOrigin(0.5)
-      .setDepth(3);
+    // --- English label plate above character ---
+    const info = DISPLAY_INFO[c.id] || { name: c.name, role: c.role };
+
+    const roleText = scene.add.text(0, -8, info.role, {
+      fontSize: "16px",
+      fontStyle: "bold",
+      color: "#ffffff",
+      fontFamily: '"Pixelify Sans", sans-serif',
+      stroke: "#000000",
+      strokeThickness: 3,
+    }).setOrigin(0.5);
+
+    const nameTextObj = scene.add.text(0, 8, info.name, {
+      fontSize: "13px",
+      color: "#aaaaaa",
+      fontFamily: '"Pixelify Sans", sans-serif',
+      stroke: "#000000",
+      strokeThickness: 3,
+    }).setOrigin(0.5);
+
+    const statusText = scene.add.text(0, 22, "", {
+      fontSize: "12px",
+      fontStyle: "bold",
+      color: "#f0c040",
+      fontFamily: '"Pixelify Sans", sans-serif',
+      stroke: "#000000",
+      strokeThickness: 2,
+    }).setOrigin(0.5);
+
+    // Background plate
+    const plateW = Math.max(roleText.width, nameTextObj.width) + 16;
+    const plateBg = scene.add.rectangle(0, 0, plateW, 40, 0x000000, 0.6);
+
+    const labelContainer = scene.add.container(startX, startY - 52, [
+      plateBg,
+      roleText,
+      nameTextObj,
+      statusText,
+    ]).setDepth(3);
 
     const ref: CharRef = {
       sprite,
-      nameText,
+      labelContainer,
+      roleText,
+      nameTextObj,
+      statusText,
       data: c,
       spriteName,
       walkSpeed: 30 + Math.random() * 30,
@@ -311,34 +336,25 @@ export function placeCharacters(
     const zone = WORK_ZONES[charId];
 
     if (status === "working") {
-      // Stop walking, go to desk, face up
       stopWalking(ref);
       if (zone) {
         ref.sprite.setPosition(zone.cx, zone.cy + 20);
-        ref.sprite.setFrame(DIR_FRAMES["up"].start); // face desk
-        ref.nameText.setPosition(ref.sprite.x, ref.sprite.y - 44);
+        ref.sprite.setFrame(DIR_FRAMES["up"].start);
+        updateLabelPos(ref);
       }
-      ref.nameText.setText(`${ref.data.name_ru}\nWorking...`);
-      ref.nameText.setColor("#f0c040");
+      ref.statusText.setText("Working...");
+      ref.statusText.setColor("#f0c040");
     } else if (status === "done") {
-      ref.nameText.setText(`${ref.data.name_ru}\nDone`);
-      ref.nameText.setColor("#4ad98a");
-      // After 3 seconds, go back to idle
+      ref.statusText.setText("Done");
+      ref.statusText.setColor("#4ecb4e");
       scene.time.delayedCall(3000, () => {
-        if (ref.status === "done") {
-          setCharStatus(charId, "idle");
-        }
+        if (ref.status === "done") setCharStatus(charId, "idle");
       });
     } else {
-      // idle
-      ref.nameText.setText(ref.data.name_ru);
-      ref.nameText.setColor("#e0d5c1");
-      if (selectedId !== charId) {
-        startWalking(ref);
-      }
+      ref.statusText.setText("");
+      if (selectedId !== charId) startWalking(ref);
     }
 
-    // Dispatch for Party bar
     window.dispatchEvent(
       new CustomEvent("character-status-update", {
         detail: { id: charId, status },
@@ -352,8 +368,6 @@ export function placeCharacters(
   }
 
   window.addEventListener("character-status", handleStatusEvent);
-
-  // Cleanup listener when scene shuts down
   scene.events.on("shutdown", () => {
     window.removeEventListener("character-status", handleStatusEvent);
   });

@@ -7,6 +7,7 @@ const SPRITE_MAP: Record<string, string> = {
   "creative-director": "/sprites/Alex.png",
   "senior-copywriter": "/sprites/Jenny.png",
   "ua-strategist": "/sprites/Bob.png",
+  "project-manager": "/sprites/Molly.png",
 };
 
 interface Props {

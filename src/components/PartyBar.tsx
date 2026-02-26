@@ -88,7 +88,7 @@ export default function PartyBar({ characters, selectedId, onSelect }: Props) {
                 animation: isWorking ? "partyPulse 1.5s ease-in-out infinite" : "none",
               }}
             >
-              <CharacterAvatar characterId={c.id} size={40} />
+              <CharacterAvatar characterId={c.id} size={44} />
 
               {/* Status dot */}
               {(isWorking || isDone) && (

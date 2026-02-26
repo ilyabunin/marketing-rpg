@@ -23,5 +23,11 @@
     "description": "UA гипотезы → Asana задачи с приоритетами",
     "destination": "Asana",
     "setup_guide": "В Make.com: Webhook → Iterator (по гипотезам) → Asana (Create a Task для каждой)"
+  },
+  "pm-asana-backlog": {
+    "url": "",
+    "description": "Задача из бэклога → Asana проект",
+    "destination": "Asana",
+    "setup_guide": "В Make.com: Webhook → Asana (Create a Task). Project: Backlog, поля: name, notes, priority, due_date"
   }
 }

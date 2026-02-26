@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import ChatPanel from "@/components/ChatPanel";
@@ -34,6 +34,8 @@ export default function Home() {
   const [userId, setUserId] = useState<string>("");
   const [isGuest, setIsGuest] = useState(false);
   const [ready, setReady] = useState(false);
+  const [chatWidth, setChatWidth] = useState(420);
+  const isDragging = useRef(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -53,6 +55,42 @@ export default function Home() {
       .then(setCharacters)
       .catch(() => {});
   }, [router]);
+
+  // Drag handle for resizable chat
+  useEffect(() => {
+    function handleMouseMove(e: MouseEvent) {
+      if (!isDragging.current) return;
+      const newWidth = window.innerWidth - e.clientX;
+      setChatWidth(Math.max(380, Math.min(newWidth, window.innerWidth * 0.8)));
+    }
+    function handleMouseUp() {
+      isDragging.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    }
+    function handleTouchMove(e: TouchEvent) {
+      if (!isDragging.current) return;
+      const touch = e.touches[0];
+      const newWidth = window.innerWidth - touch.clientX;
+      setChatWidth(Math.max(380, Math.min(newWidth, window.innerWidth * 0.8)));
+    }
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("touchmove", handleTouchMove);
+    window.addEventListener("touchend", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleMouseUp);
+    };
+  }, []);
+
+  const handleDragStart = useCallback(() => {
+    isDragging.current = true;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }, []);
 
   const handleChat = useCallback((c: CharacterData) => {
     setBioCharacter(null);
@@ -100,16 +138,53 @@ export default function Home() {
           )}
         </div>
 
-        {/* Chat Panel — fixed 380px */}
+        {/* Drag handle + Chat Panel */}
         {selected && (
-          <div className="w-full md:w-auto h-full flex-shrink-0">
-            <ChatPanel
-              character={selected}
-              userId={userId}
-              isGuest={isGuest}
-              onClose={() => setSelected(null)}
-            />
-          </div>
+          <>
+            {/* Drag handle */}
+            <div
+              className="hidden md:flex items-center justify-center flex-shrink-0"
+              style={{
+                width: 6,
+                cursor: "col-resize",
+                backgroundColor: "#333",
+              }}
+              onMouseDown={handleDragStart}
+              onTouchStart={handleDragStart}
+            >
+              <div
+                style={{
+                  width: 2,
+                  height: 32,
+                  backgroundColor: "#666",
+                  borderRadius: 1,
+                }}
+              />
+            </div>
+
+            {/* Chat Panel */}
+            <div
+              className="w-full md:w-auto h-full flex-shrink-0"
+              style={{ width: undefined }}
+            >
+              <div className="h-full hidden md:block" style={{ width: chatWidth }}>
+                <ChatPanel
+                  character={selected}
+                  userId={userId}
+                  isGuest={isGuest}
+                  onClose={() => setSelected(null)}
+                />
+              </div>
+              <div className="h-full md:hidden">
+                <ChatPanel
+                  character={selected}
+                  userId={userId}
+                  isGuest={isGuest}
+                  onClose={() => setSelected(null)}
+                />
+              </div>
+            </div>
+          </>
         )}
       </div>
 

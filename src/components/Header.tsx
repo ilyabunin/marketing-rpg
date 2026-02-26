@@ -28,8 +28,8 @@ export default function Header({ isGuest }: Props) {
   return (
     <div className="flex items-center justify-between px-4 py-2 border-b-2 border-rpg-border">
       <h1
-        className="font-pixel text-sm md:text-base text-rpg-gold"
-        style={{ textShadow: "2px 2px 0 #1a1a2e, 1px 1px 0 #4a4a6a" }}
+        className="font-pixel text-rpg-gold"
+        style={{ fontSize: 24, fontWeight: 700, textShadow: "2px 2px 0 #1a1a2e, 1px 1px 0 #4a4a6a" }}
       >
         Profee Marketing Playground
       </h1>
