@@ -167,7 +167,7 @@ export function placeCharacters(
   function deselectAll() {
     if (selectedId) {
       const ref = charRefs.get(selectedId);
-      if (ref && ref.status !== "working" && !ref.isTalking) startWalking(ref);
+      if (ref && ref.status === "idle" && !ref.isTalking) startWalking(ref);
       selectedId = null;
     }
     clearMenu();
@@ -235,12 +235,16 @@ export function placeCharacters(
 
   // ─── Walking AI ──────────────────────────────────────────────
 
-  function stopWalking(ref: CharRef) {
+  function fullStop(ref: CharRef) {
     ref.currentTween?.stop();
     ref.currentTween = null;
     ref.walkTimer?.remove();
     ref.walkTimer = null;
     ref.sprite.stop();
+  }
+
+  function stopWalking(ref: CharRef) {
+    fullStop(ref);
     ref.sprite.setFrame(0);
     updateLabelPos(ref);
   }
@@ -251,7 +255,8 @@ export function placeCharacters(
 
   /**
    * Pick a walk target with zone-based probabilities:
-   * 50% home zone, 30% common area, 20% near another character
+   * 50% home zone, 30% common area, 20% near another character.
+   * Collision-checks the target before returning.
    */
   function pickWalkTarget(ref: CharRef): { x: number; y: number } {
     const zone = WORK_ZONES[ref.data.id];
@@ -297,11 +302,13 @@ export function placeCharacters(
   }
 
   function startWalking(ref: CharRef) {
-    if (ref.status === "working" || ref.isTalking) return;
+    // Guard: only walk when truly idle
+    if (ref.status !== "idle" || ref.isTalking) return;
     if (!WORK_ZONES[ref.data.id]) return;
 
     function walk() {
-      if (selectedId === ref.data.id || ref.status === "working" || ref.isTalking) return;
+      // Re-check every time walk fires
+      if (selectedId === ref.data.id || ref.status !== "idle" || ref.isTalking) return;
 
       const target = pickWalkTarget(ref);
       const dx = target.x - ref.sprite.x;
@@ -324,15 +331,9 @@ export function placeCharacters(
         duration,
         ease: "Linear",
         onUpdate: () => {
+          // Only update label position — no collision check here
+          // (collision checked at target selection to avoid jitter)
           updateLabelPos(ref);
-          // Collision avoidance during walk
-          if (isTooClose(ref.sprite.x, ref.sprite.y, ref.data.id, charRefs, 35)) {
-            ref.currentTween?.stop();
-            ref.currentTween = null;
-            ref.sprite.stop();
-            ref.sprite.setFrame(DIR_FRAMES[dir].start);
-            ref.walkTimer = scene.time.delayedCall(1000 + Math.random() * 2000, walk);
-          }
         },
         onComplete: () => {
           ref.currentTween = null;
@@ -348,8 +349,17 @@ export function placeCharacters(
 
   // ─── Run to desk (on task assignment) ────────────────────────
 
+  function seatAtDesk(ref: CharRef) {
+    const zone = WORK_ZONES[ref.data.id];
+    if (!zone) return;
+    ref.sprite.setPosition(zone.cx, zone.cy + 20);
+    ref.sprite.stop();
+    ref.sprite.setFrame(DIR_FRAMES["up"].start);
+    updateLabelPos(ref);
+  }
+
   function runToDesk(ref: CharRef) {
-    stopWalking(ref);
+    fullStop(ref);
     ref.isTalking = false; // interrupt any conversation
 
     const zone = WORK_ZONES[ref.data.id];
@@ -361,13 +371,13 @@ export function placeCharacters(
     const dy = deskY - ref.sprite.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
+    // Show status immediately
+    ref.statusText.setText("Working...");
+    ref.statusText.setColor("#f0c040");
+
     if (dist < 10) {
       // Already at desk
-      ref.sprite.setPosition(deskX, deskY);
-      ref.sprite.setFrame(DIR_FRAMES["up"].start);
-      updateLabelPos(ref);
-      ref.statusText.setText("Working...");
-      ref.statusText.setColor("#f0c040");
+      seatAtDesk(ref);
       return;
     }
 
@@ -387,12 +397,10 @@ export function placeCharacters(
       onUpdate: () => { updateLabelPos(ref); },
       onComplete: () => {
         ref.currentTween = null;
-        ref.sprite.stop();
-        // Face monitor (up)
-        ref.sprite.setFrame(DIR_FRAMES["up"].start);
-        updateLabelPos(ref);
-        ref.statusText.setText("Working...");
-        ref.statusText.setColor("#f0c040");
+        // Only seat if still working — status may have changed mid-run
+        if (ref.status === "working") {
+          seatAtDesk(ref);
+        }
       },
     });
   }
@@ -500,12 +508,17 @@ export function placeCharacters(
     if (status === "working") {
       runToDesk(ref);
     } else if (status === "done") {
-      ref.statusText.setText("Done ✓");
+      // Stop any running tween (e.g. the runToDesk tween still in flight)
+      fullStop(ref);
+      // Snap to desk immediately
+      seatAtDesk(ref);
+      ref.statusText.setText("Done \u2713");
       ref.statusText.setColor("#4ecb4e");
       scene.time.delayedCall(3000, () => {
         if (ref.status === "done") setCharStatus(charId, "idle");
       });
     } else {
+      // idle
       ref.statusText.setText("");
       if (selectedId !== charId && !ref.isTalking) startWalking(ref);
     }

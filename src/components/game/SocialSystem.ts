@@ -9,7 +9,7 @@
  * - Only idle characters participate (not working, not in chat)
  * - Minimum 2 idle characters required
  * - Groups: 60% pairs, 25% trios, 15% quads/full
- * - Characters walk to a meeting point, show bubbles sequentially, then disperse
+ * - Characters walk toward a meeting point, then show bubbles, then disperse
  */
 
 import type { CharRef, CharacterSystemAPI } from "./CharacterSprites";
@@ -49,6 +49,7 @@ const BUBBLE_NAMES = [
 const CONVERSATION_COOLDOWN = 20_000; // 20 seconds
 const MAX_PER_MINUTE = 3;
 const BUBBLE_SCALE = 0.7;
+const GATHER_TIME = 3000; // ms to walk to meeting point before starting bubbles
 
 // Direction frame lookup for facing
 const FACE_FRAMES: Record<string, number> = {
@@ -74,6 +75,7 @@ export function initSocialSystem(
   let convThisMinute = 0;
   let minuteStart = scene.time.now;
   let activeConversation = false;
+  let currentParticipants: CharRef[] = [];
 
   // ─── Helpers ───────────────────────────────────────────────
 
@@ -94,11 +96,15 @@ export function initSocialSystem(
 
   // ─── Speech bubble show/hide ───────────────────────────────
 
-  function showBubble(char: CharRef): Phaser.GameObjects.Image {
+  function showBubble(char: CharRef): Phaser.GameObjects.Image | null {
+    // Safety: check the texture exists in cache
+    const bName = randomBubbleName();
+    if (!scene.textures.exists(bName)) return null;
+
     const bubble = scene.add.image(
       char.sprite.x,
-      char.sprite.y - 55,
-      randomBubbleName()
+      char.sprite.y - 60,
+      bName
     );
     bubble.setScale(0);
     bubble.setOrigin(0.5, 1); // anchor at bottom-center (above head)
@@ -123,6 +129,22 @@ export function initSocialSystem(
     });
   }
 
+  // ─── End conversation (cleanup) ────────────────────────────
+
+  function endConversation() {
+    if (!activeConversation) return;
+    activeConversation = false;
+    lastConvTime = scene.time.now;
+    convThisMinute++;
+
+    currentParticipants.forEach((p) => {
+      p.isTalking = false;
+      // Only restart walking if still idle
+      if (p.status === "idle") api.startWalking(p);
+    });
+    currentParticipants = [];
+  }
+
   // ─── Conversation flow ─────────────────────────────────────
 
   function startConversation() {
@@ -142,6 +164,7 @@ export function initSocialSystem(
     const participants = shuffled.slice(0, count);
 
     activeConversation = true;
+    currentParticipants = participants;
 
     // Mark as talking & stop walking
     participants.forEach((p) => {
@@ -153,52 +176,7 @@ export function initSocialSystem(
     const meetX = 350 + Math.random() * 550;
     const meetY = 280 + Math.random() * 300;
 
-    // ── Phase 1: Walk to meeting point ──
-
-    let arrivedCount = 0;
-
-    function onAllArrived() {
-      if (!activeConversation) return;
-
-      // Face toward center of group
-      participants.forEach((p) => {
-        const dx = meetX - p.sprite.x;
-        const dy = meetY - p.sprite.y;
-        const dir = getDirection(dx, dy);
-        p.sprite.setFrame(FACE_FRAMES[dir] ?? 0);
-      });
-
-      // ── Phase 2: Show speech bubbles sequentially ──
-      const totalBubbles =
-        participants.length * (1 + Math.floor(Math.random() * 2));
-      let bubbleIdx = 0;
-
-      function showNextBubble() {
-        if (bubbleIdx >= totalBubbles || !activeConversation) {
-          endConversation();
-          return;
-        }
-
-        const speaker = participants[bubbleIdx % participants.length];
-        if (!speaker.isTalking) {
-          endConversation();
-          return;
-        }
-
-        const bubble = showBubble(speaker);
-        const displayTime = 1500 + Math.random() * 1000;
-
-        scene.time.delayedCall(displayTime, () => {
-          hideBubble(bubble);
-          bubbleIdx++;
-          const pause = 500 + Math.random() * 1000;
-          scene.time.delayedCall(pause, showNextBubble);
-        });
-      }
-
-      // Brief pause before first bubble
-      scene.time.delayedCall(400, showNextBubble);
-    }
+    // ── Phase 1: Walk toward meeting point ──
 
     participants.forEach((p, i) => {
       // Arrange in a small circle around meeting point
@@ -212,11 +190,7 @@ export function initSocialSystem(
       const dy = targetY - p.sprite.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
 
-      if (dist < 10) {
-        arrivedCount++;
-        if (arrivedCount === count) onAllArrived();
-        return;
-      }
+      if (dist < 10) return; // already close enough
 
       const dir = getDirection(dx, dy);
       p.sprite.play(`${p.spriteName}-walk-${dir}`);
@@ -225,7 +199,7 @@ export function initSocialSystem(
         targets: p.sprite,
         x: targetX,
         y: targetY,
-        duration: (dist / 55) * 1000, // slightly faster walk to meeting
+        duration: (dist / 55) * 1000,
         ease: "Linear",
         onUpdate: () => api.updateLabelPos(p),
         onComplete: () => {
@@ -233,25 +207,62 @@ export function initSocialSystem(
           p.sprite.stop();
           p.sprite.setFrame(0);
           api.updateLabelPos(p);
-          arrivedCount++;
-          if (arrivedCount === count) onAllArrived();
         },
       });
     });
 
-    // ── Cleanup ──
+    // ── Phase 2: Start bubbles after a fixed gather time ──
+    // (Don't wait for all arrivals — timeout-based is more robust)
 
-    function endConversation() {
+    scene.time.delayedCall(GATHER_TIME, () => {
       if (!activeConversation) return;
-      activeConversation = false;
-      lastConvTime = scene.time.now;
-      convThisMinute++;
 
+      // Stop any still-walking participants and face them toward center
       participants.forEach((p) => {
-        p.isTalking = false;
-        if (p.status === "idle") api.startWalking(p);
+        if (p.currentTween) {
+          p.currentTween.stop();
+          p.currentTween = null;
+          p.sprite.stop();
+        }
+        const dx = meetX - p.sprite.x;
+        const dy = meetY - p.sprite.y;
+        const dir = getDirection(dx, dy);
+        p.sprite.setFrame(FACE_FRAMES[dir] ?? 0);
+        api.updateLabelPos(p);
       });
-    }
+
+      // Show speech bubbles sequentially
+      const totalBubbles =
+        participants.length * (1 + Math.floor(Math.random() * 2));
+      let bubbleIdx = 0;
+
+      function showNextBubble() {
+        if (bubbleIdx >= totalBubbles || !activeConversation) {
+          endConversation();
+          return;
+        }
+
+        const speaker = participants[bubbleIdx % participants.length];
+        // Check speaker is still in conversation
+        if (!speaker.isTalking) {
+          endConversation();
+          return;
+        }
+
+        const bubble = showBubble(speaker);
+        const displayTime = 1500 + Math.random() * 1000;
+
+        scene.time.delayedCall(displayTime, () => {
+          if (bubble) hideBubble(bubble);
+          bubbleIdx++;
+          const pause = 500 + Math.random() * 1000;
+          scene.time.delayedCall(pause, showNextBubble);
+        });
+      }
+
+      // Small pause then start
+      scene.time.delayedCall(300, showNextBubble);
+    });
 
     // Safety timeout — force end after 15 seconds
     scene.time.delayedCall(15_000, () => {
@@ -288,6 +299,9 @@ export function initSocialSystem(
     });
   }
 
-  // First conversation attempt after 5 seconds
-  scene.time.delayedCall(5_000, scheduleNext);
+  // First conversation attempt after 8 seconds (let characters spread out first)
+  scene.time.delayedCall(8_000, () => {
+    tryStartConversation();
+    scheduleNext();
+  });
 }
